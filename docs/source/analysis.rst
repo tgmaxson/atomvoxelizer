@@ -30,6 +30,10 @@ of the periodic cell:
 ``surface_area`` is estimated by applying marching cubes to the selected voxel
 mask and transforming mesh vertices into real-space coordinates.
 
+The marching-cubes surface is a geometric estimate on the selected mask. It does
+not currently stitch surfaces periodically across cell boundaries, so boundary
+crossing pore networks should be interpreted with that limitation in mind.
+
 Zeolite Pore Volume And Surface Area
 ------------------------------------
 

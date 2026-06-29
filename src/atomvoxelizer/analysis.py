@@ -39,6 +39,9 @@ class VoxelGridAnalysis:
 
     def mask(self, min_value=None, max_value=None, threshold=None, above=True):
         """Build a boolean mask from voxel values."""
+        if threshold is not None and (min_value is not None or max_value is not None):
+            raise ValueError("Specify either threshold or min_value/max_value, not both")
+
         grid = self.grid
         if threshold is not None:
             return grid > threshold if above else grid < threshold
@@ -116,12 +119,16 @@ class VoxelGridAnalysis:
     @staticmethod
     def volume_angstrom3_to_cm3_per_g(volume_angstrom3, mass_amu):
         """Convert a cell/supercell volume from Angstrom^3 to cm^3/g."""
+        if mass_amu <= 0:
+            raise ValueError("mass_amu must be positive")
         mass_g = float(mass_amu) * 1.66053906660e-24
         return float(volume_angstrom3) * 1.0e-24 / mass_g
 
     @staticmethod
     def area_angstrom2_to_m2_per_g(area_angstrom2, mass_amu):
         """Convert a cell/supercell area from Angstrom^2 to m^2/g."""
+        if mass_amu <= 0:
+            raise ValueError("mass_amu must be positive")
         mass_g = float(mass_amu) * 1.66053906660e-24
         return float(area_angstrom2) * 1.0e-20 / mass_g
 

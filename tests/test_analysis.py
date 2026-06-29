@@ -37,3 +37,16 @@ def test_experimental_unit_conversions():
 
     assert analysis.volume_angstrom3_to_cm3_per_g(1.0, mass_amu) == pytest.approx(1.0)
     assert analysis.area_angstrom2_to_m2_per_g(1.0, mass_amu) == pytest.approx(1.0e4)
+
+    with pytest.raises(ValueError, match="mass_amu"):
+        analysis.volume_angstrom3_to_cm3_per_g(1.0, 0.0)
+
+    with pytest.raises(ValueError, match="mass_amu"):
+        analysis.area_angstrom2_to_m2_per_g(1.0, -1.0)
+
+
+def test_mask_rejects_mixed_threshold_and_range():
+    analysis = VoxelGridAnalysis(VoxelGrid(np.eye(3), gpts=(1, 1, 1)))
+
+    with pytest.raises(ValueError, match="threshold"):
+        analysis.mask(threshold=0.5, min_value=0.0)
