@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "AtomVoxelizer"
+version = "0.1.0"
+description = "Periodic atom-centered voxel grids for atomistic structures."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "AtomVoxelizer contributors" },
+]
+dependencies = [
+    "matplotlib",
+    "numba",
+    "numpy",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.optional-dependencies]
+examples = [
+    "ase",
+    "requests",
+]
+docs = [
+    "sphinx",
+]
+dev = [
+    "ase",
+    "requests",
+    "sphinx",
+]
+
+[project.urls]
+Homepage = "https://gitlab.com/tgmaxson/atomvoxelizer"
+Documentation = "https://atomvoxelizer.readthedocs.io/"
+Repository = "https://gitlab.com/tgmaxson/atomvoxelizer"
+
+[tool.setuptools.packages.find]
+where = ["src"]
