@@ -28,11 +28,11 @@ of the periodic cell:
 
 ``volume`` is reported in cubic Angstrom when the input cell is in Angstrom.
 ``surface_area`` is estimated by applying marching cubes to the selected voxel
-mask and transforming mesh vertices into real-space coordinates.
-
-The marching-cubes surface is a geometric estimate on the selected mask. It does
-not currently stitch surfaces periodically across cell boundaries, so boundary
-crossing pore networks should be interpreted with that limitation in mind.
+mask and transforming mesh vertices into real-space coordinates. By default,
+connected-component labeling and surface-area estimation apply periodic boundary
+conditions. Periodic connected components are merged across opposite cell faces;
+periodic surface areas are measured from a tiled mask and counted only for the
+central periodic image.
 
 Zeolite Pore Volume And Surface Area
 ------------------------------------
@@ -64,6 +64,12 @@ The same workflow is provided as ``examples/zeolite_analysis.py``:
 .. code-block:: bash
 
    python examples/zeolite_analysis.py BEA --resolution 0.25
+
+The example can also run a resolution-convergence study and save a plot:
+
+.. code-block:: bash
+
+   python examples/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 0.35 --plot bea_convergence.png
 
 Experimental Comparison
 -----------------------

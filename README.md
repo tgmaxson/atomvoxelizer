@@ -64,6 +64,7 @@ The analysis example estimates pore volume and internal surface area:
 ```bash
 pip install -e ".[examples,analysis]"
 python examples/zeolite_analysis.py BEA --resolution 0.25
+python examples/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 --plot bea_convergence.png
 ```
 
 ## Tests and Benchmarks

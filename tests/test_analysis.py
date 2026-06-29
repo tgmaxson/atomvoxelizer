@@ -50,3 +50,25 @@ def test_mask_rejects_mixed_threshold_and_range():
 
     with pytest.raises(ValueError, match="threshold"):
         analysis.mask(threshold=0.5, min_value=0.0)
+
+
+def test_connected_components_merge_periodic_boundaries():
+    grid = VoxelGrid(np.eye(3) * 4.0, gpts=(4, 4, 4))
+    grid.grid[0, 1, 1] = 1.0
+    grid.grid[-1, 1, 1] = 1.0
+    analysis = VoxelGridAnalysis(grid)
+
+    _labels, periodic_count = analysis.connected_components(grid.grid > 0.0, periodic=True)
+    _labels, nonperiodic_count = analysis.connected_components(grid.grid > 0.0, periodic=False)
+
+    assert periodic_count == 1
+    assert nonperiodic_count == 2
+
+
+def test_periodic_surface_area_removes_cell_boundary_surface_for_full_mask():
+    grid = VoxelGrid(np.eye(3) * 4.0, gpts=(4, 4, 4))
+    selected = np.ones(grid.grid.shape, dtype=bool)
+    analysis = VoxelGridAnalysis(grid)
+
+    assert analysis.surface_area(selected, periodic=True) == pytest.approx(0.0)
+    assert analysis.surface_area(selected, periodic=False) > 0.0

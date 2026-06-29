@@ -53,7 +53,7 @@ class VoxelGridAnalysis:
             selected &= grid <= max_value
         return selected
 
-    def connected_components(self, selected, connectivity=1):
+    def connected_components(self, selected, connectivity=1, periodic=True):
         """Label connected components in a boolean mask."""
         try:
             from skimage.measure import label
@@ -63,14 +63,17 @@ class VoxelGridAnalysis:
                 "`pip install AtomVoxelizer[analysis]`."
             ) from exc
 
-        labels = label(np.asarray(selected, dtype=bool), connectivity=connectivity)
+        selected = np.asarray(selected, dtype=bool)
+        labels = label(selected, connectivity=connectivity)
+        if periodic:
+            labels = self._merge_periodic_labels(labels, selected)
         return labels, int(labels.max())
 
     def region_volume(self, selected):
         """Return the volume represented by a boolean mask."""
         return int(np.count_nonzero(selected)) * self.voxel_volume
 
-    def surface_area(self, selected):
+    def surface_area(self, selected, periodic=True):
         """Estimate the surface area of a boolean region with marching cubes."""
         try:
             from skimage.measure import marching_cubes
@@ -83,10 +86,25 @@ class VoxelGridAnalysis:
         selected = np.asarray(selected, dtype=bool)
         if not np.any(selected):
             return 0.0
+        if periodic and np.all(selected):
+            return 0.0
 
-        padded = np.pad(selected.astype(np.float32), 1, mode="constant", constant_values=0.0)
-        vertices, faces, _normals, _values = marching_cubes(padded, level=0.5)
-        vertices = vertices - 1.0
+        if periodic:
+            values = np.tile(selected.astype(np.float32), (3, 3, 3))
+            vertices, faces, _normals, _values = marching_cubes(values, level=0.5)
+            central_offset = self.gpts
+            centroids = vertices[faces].mean(axis=1)
+            in_central_cell = np.all((centroids >= central_offset) & (centroids < 2 * central_offset), axis=1)
+            faces = faces[in_central_cell]
+            vertices = vertices - central_offset
+        else:
+            values = np.pad(selected.astype(np.float32), 1, mode="constant", constant_values=0.0)
+            vertices, faces, _normals, _values = marching_cubes(values, level=0.5)
+            vertices = vertices - 1.0
+
+        if faces.size == 0:
+            return 0.0
+
         real_vertices = self._index_vertices_to_real(vertices)
         return self._mesh_surface_area(real_vertices, faces)
 
@@ -97,10 +115,11 @@ class VoxelGridAnalysis:
         threshold=None,
         above=True,
         connectivity=1,
+        periodic=True,
     ):
         """Return volume and marching-cubes area for each connected region."""
         selected = self.mask(min_value=min_value, max_value=max_value, threshold=threshold, above=above)
-        labels, label_count = self.connected_components(selected, connectivity=connectivity)
+        labels, label_count = self.connected_components(selected, connectivity=connectivity, periodic=periodic)
 
         regions = []
         for label_id in range(1, label_count + 1):
@@ -111,7 +130,7 @@ class VoxelGridAnalysis:
                     label=label_id,
                     voxel_count=voxel_count,
                     volume=voxel_count * self.voxel_volume,
-                    surface_area=self.surface_area(region_mask),
+                    surface_area=self.surface_area(region_mask, periodic=periodic),
                 )
             )
         return regions
@@ -135,6 +154,48 @@ class VoxelGridAnalysis:
     def _index_vertices_to_real(self, vertices):
         frac = vertices / self.gpts
         return frac @ self.cell
+
+    @staticmethod
+    def _merge_periodic_labels(labels, selected):
+        label_count = int(labels.max())
+        if label_count == 0:
+            return labels
+
+        parent = np.arange(label_count + 1)
+
+        def find(label_id):
+            while parent[label_id] != label_id:
+                parent[label_id] = parent[parent[label_id]]
+                label_id = parent[label_id]
+            return label_id
+
+        def union(a, b):
+            if a == 0 or b == 0:
+                return
+            root_a = find(int(a))
+            root_b = find(int(b))
+            if root_a != root_b:
+                parent[root_b] = root_a
+
+        for axis in range(labels.ndim):
+            first_labels = np.take(labels, 0, axis=axis)
+            last_labels = np.take(labels, -1, axis=axis)
+            first_selected = np.take(selected, 0, axis=axis)
+            last_selected = np.take(selected, -1, axis=axis)
+            for a, b in zip(first_labels[first_selected & last_selected], last_labels[first_selected & last_selected]):
+                union(a, b)
+
+        root_to_new_label = {}
+        next_label = 1
+        merged = np.zeros_like(labels)
+        for label_id in range(1, label_count + 1):
+            root = find(label_id)
+            if root not in root_to_new_label:
+                root_to_new_label[root] = next_label
+                next_label += 1
+            merged[labels == label_id] = root_to_new_label[root]
+
+        return merged
 
     @staticmethod
     def _mesh_surface_area(vertices, faces):
