@@ -1,0 +1,8 @@
+include .readthedocs.yaml
+include README.md
+include pyproject.toml
+recursive-include benchmarks *.py
+recursive-include docs/source *.py *.rst
+recursive-include examples *.py *.cif
+recursive-include tests *.py
+

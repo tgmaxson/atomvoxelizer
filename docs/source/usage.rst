@@ -5,7 +5,18 @@ Install the package in editable mode while developing:
 
 .. code-block:: bash
 
-   pip install -e ".[examples,docs]"
+   pip install -e ".[dev,examples]"
+
+Install optional acceleration backends with:
+
+.. code-block:: bash
+
+   pip install ".[numba]"
+   pip install ".[taichi]"
+   pip install ".[cupy]"
+
+``VoxelGrid`` is always the NumPy backend. Optional acceleration backends are
+explicit: ``VoxelGridNumba``, ``VoxelGridTaichi``, and ``VoxelGridCuPy``.
 
 Create a voxel grid from a periodic cell:
 
@@ -23,3 +34,10 @@ The zeolite example in ``examples/zeolite_voxel.py`` demonstrates reading CIF
 files with ASE, voxelizing covalent-radius shells and cores, and plotting slices
 and supercell scaling.
 
+Run tests and benchmarks with:
+
+.. code-block:: bash
+
+   pytest
+   python benchmarks/benchmark_backends.py --backends numpy numba taichi cupy
+   python benchmarks/benchmark_structures.py

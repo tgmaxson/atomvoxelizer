@@ -13,19 +13,36 @@ authors = [
 ]
 dependencies = [
     "matplotlib",
-    "numba",
     "numpy",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Physics",
 ]
 
 [project.optional-dependencies]
+numba = [
+    "numba",
+]
+cupy = [
+    "cupy",
+    "numba",
+]
+taichi = [
+    "taichi",
+]
+analysis = [
+    "scikit-image",
+]
 examples = [
     "ase",
     "requests",
@@ -35,8 +52,21 @@ docs = [
 ]
 dev = [
     "ase",
+    "numba",
+    "pytest",
     "requests",
+    "scikit-image",
     "sphinx",
+    "taichi",
+]
+bench = [
+    "ase",
+    "numba",
+    "taichi",
+]
+publish = [
+    "build",
+    "twine",
 ]
 
 [project.urls]
@@ -46,3 +76,6 @@ Repository = "https://gitlab.com/tgmaxson/atomvoxelizer"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

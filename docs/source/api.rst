@@ -6,3 +6,12 @@ API Reference
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: atomvoxelizer.VoxelGridNumPy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: atomvoxelizer.VoxelGridAnalysis
+   :members:
+   :undoc-members:
+   :show-inheritance:
