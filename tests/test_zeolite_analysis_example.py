@@ -10,7 +10,7 @@ pytestmark = pytest.mark.skipif(importlib.util.find_spec("skimage") is None, rea
 
 
 def load_zeolite_analysis_module():
-    module_path = Path("examples") / "zeolite_analysis.py"
+    module_path = Path("examples") / "zeolite" / "zeolite_analysis.py"
     spec = importlib.util.spec_from_file_location("zeolite_analysis_example", module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -19,7 +19,7 @@ def load_zeolite_analysis_module():
 
 def test_zeolite_analysis_convergence_and_plot(tmp_path):
     module = load_zeolite_analysis_module()
-    atoms = read(Path("examples") / "BEA.cif")
+    atoms = read(Path("examples") / "zeolite" / "BEA.cif")
     results = [module.analyze_zeolite(atoms, resolution, core_scale=0.9) for resolution in (1.5, 1.0)]
 
     for result in results:

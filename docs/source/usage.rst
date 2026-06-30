@@ -58,9 +58,9 @@ field:
 Periodic scalar meshes are clipped at the primary cell boundary. This avoids
 wrapping a boundary-crossing triangle across the cell.
 
-The zeolite example in ``examples/zeolite_voxel.py`` demonstrates reading CIF
-files with ASE, voxelizing covalent-radius shells and cores, and plotting slices
-and supercell scaling.
+The zeolite example in ``examples/zeolite/zeolite_voxel.py`` demonstrates
+reading CIF files with ASE, voxelizing covalent-radius shells and cores, and
+plotting slices and supercell scaling.
 
 The Wulff example in ``examples/wulff/distance_surface.py`` demonstrates a
 nearest-atom distance field around a nanoparticle and writes a marching-cubes
@@ -70,6 +70,7 @@ surface mesh:
 
    pip install -e ".[examples,analysis]"
    python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --output pt_surface.npz
+   python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --show
 
 Run tests and benchmarks with:
 

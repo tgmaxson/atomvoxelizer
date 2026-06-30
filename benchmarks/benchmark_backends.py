@@ -43,7 +43,7 @@ def make_synthetic_workload(cell_length, atom_count, seed):
 
 
 def make_zeolite_workload(framework, radius_scale):
-    atoms = read(ROOT / "examples" / f"{framework.upper()}.cif")
+    atoms = read(ROOT / "examples" / "zeolite" / f"{framework.upper()}.cif")
     return make_atoms_workload(atoms, radius_scale)
 
 
@@ -212,7 +212,7 @@ def print_table(rows):
 
 
 def zeolite_scaling_workloads(framework, resolution, radius_scale):
-    atoms = read(ROOT / "examples" / f"{framework.upper()}.cif")
+    atoms = read(ROOT / "examples" / "zeolite" / f"{framework.upper()}.cif")
     scale_factors = [(1, 1, 1), (1, 1, 2), (1, 2, 2), (2, 2, 2)]
     workloads = []
     for scale in scale_factors:

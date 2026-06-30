@@ -59,17 +59,17 @@ Example:
    pore_volume_cm3_g = analysis.volume_angstrom3_to_cm3_per_g(pore_volume_a3, mass_amu)
    internal_area_m2_g = analysis.area_angstrom2_to_m2_per_g(pore_area_a2, mass_amu)
 
-The same workflow is provided as ``examples/zeolite_analysis.py``:
+The same workflow is provided as ``examples/zeolite/zeolite_analysis.py``:
 
 .. code-block:: bash
 
-   python examples/zeolite_analysis.py BEA --resolution 0.25
+   python examples/zeolite/zeolite_analysis.py BEA --resolution 0.25
 
 The example can also run a resolution-convergence study and save a plot:
 
 .. code-block:: bash
 
-   python examples/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 0.35 --plot bea_convergence.png
+   python examples/zeolite/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 0.35 --plot bea_convergence.png
 
 Experimental Comparison
 -----------------------
@@ -142,3 +142,4 @@ The Wulff construction example applies this workflow to a nanoparticle:
 .. code-block:: bash
 
    python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --output pt_surface.npz
+   python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --show

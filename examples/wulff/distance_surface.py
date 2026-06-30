@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import numpy as np
@@ -58,7 +59,8 @@ def save_mesh_npz(path, atoms, grid, vertices, faces, distance, area):
     )
 
 
-def plot_mesh(path, atoms, vertices, faces):
+def plot_mesh(atoms, vertices, faces, path=None, show=False):
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
     import matplotlib.pyplot as plt
 
     fig = plt.figure(figsize=(7, 6))
@@ -80,7 +82,12 @@ def plot_mesh(path, atoms, vertices, faces):
     ax.set_zlabel("z [Angstrom]")
     ax.set_box_aspect(np.ptp(vertices, axis=0))
     fig.tight_layout()
-    fig.savefig(path, dpi=200)
+    if path is not None:
+        fig.savefig(path, dpi=200)
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
 
 def main():
@@ -93,6 +100,7 @@ def main():
     parser.add_argument("--vacuum", type=float, default=6.0, help="Vacuum padding around the cluster in Angstrom.")
     parser.add_argument("--output", type=Path, default=Path("wulff_distance_surface.npz"), help="Output mesh archive.")
     parser.add_argument("--plot", type=Path, help="Optional PNG path for a mesh preview.")
+    parser.add_argument("--show", action="store_true", help="Show an interactive Matplotlib 3D mesh plot.")
     args = parser.parse_args()
 
     atoms = build_wulff_cluster(args.symbol, args.size, args.vacuum)
@@ -104,8 +112,8 @@ def main():
     )
     save_mesh_npz(args.output, atoms, grid, vertices, faces, args.distance, area)
 
-    if args.plot:
-        plot_mesh(args.plot, atoms, vertices, faces)
+    if args.plot or args.show:
+        plot_mesh(atoms, vertices, faces, path=args.plot, show=args.show)
 
     print(f"atoms: {len(atoms)}")
     print(f"grid: {tuple(int(n) for n in grid.gpts)}")

@@ -69,11 +69,11 @@ that cross a periodic boundary are cut at the cell edge.
 
 ## Zeolite Example
 
-The zeolite example and CIF files live in `examples/`.
+The zeolite example and CIF files live in `examples/zeolite/`.
 
 ```bash
 pip install -e ".[examples]"
-python examples/zeolite_voxel.py BEA
+python examples/zeolite/zeolite_voxel.py BEA
 ```
 
 The script reads a framework CIF, builds voxel grids at several resolutions, plots
@@ -83,8 +83,8 @@ The analysis example estimates pore volume and internal surface area:
 
 ```bash
 pip install -e ".[examples,analysis]"
-python examples/zeolite_analysis.py BEA --resolution 0.25
-python examples/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 --plot bea_convergence.png
+python examples/zeolite/zeolite_analysis.py BEA --resolution 0.25
+python examples/zeolite/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 --plot bea_convergence.png
 ```
 
 ## Wulff Distance-Surface Example
@@ -96,6 +96,7 @@ field, and exports a marching-cubes mesh at a requested distance:
 pip install -e ".[examples,analysis]"
 python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --output pt_surface.npz
 python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --plot pt_surface.png
+python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --show
 ```
 
 ## Tests and Benchmarks
