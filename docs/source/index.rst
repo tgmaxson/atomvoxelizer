@@ -13,6 +13,7 @@ AtomVoxelizer builds periodic voxel grids around atomistic structures.
    algorithm
    backends
    analysis
+   contributing
    citation
    publishing
    api

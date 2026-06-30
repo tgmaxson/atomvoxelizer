@@ -4,7 +4,7 @@ Thank you for your interest in contributing to AtomVoxelizer!
 
 ## Reporting Issues
 
-If you encounter a bug or unexpected behavior, please open a GitHub Issue and include:
+If you encounter a bug or unexpected behavior, please open a GitLab issue and include:
 
 - Operating system
 - Python version
@@ -17,7 +17,7 @@ If you encounter a bug or unexpected behavior, please open a GitHub Issue and in
 Clone the repository and install in editable mode:
 
 ```bash
-git clone https://github.com/<username>/atomvoxelizer.git
+git clone https://gitlab.com/tgmaxson/atomvoxelizer.git
 cd atomvoxelizer
 pip install -e .
 ```
@@ -47,11 +47,11 @@ pytest
 
 If you add new functionality, please include corresponding tests.
 
-## Pull Requests
+## Merge Requests
 
 Please:
 
-- Keep pull requests focused on a single feature or bug fix.
+- Keep merge requests focused on a single feature or bug fix.
 - Write clear commit messages.
 - Update documentation when behavior changes.
 - Ensure all tests pass.
@@ -63,12 +63,11 @@ Documentation is built with Sphinx.
 To build locally:
 
 ```bash
-cd docs
-make html
+sphinx-build -b html docs/source docs/build/html
 ```
 
 ## Questions
 
-If you're unsure about a feature or implementation, feel free to open an Issue to discuss it before starting work.
+If you're unsure about a feature or implementation, feel free to open a GitLab issue to discuss it before starting work.
 
 Thank you for helping improve AtomVoxelizer!
