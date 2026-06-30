@@ -17,6 +17,9 @@ def main():
             "0.25",
             "--repeats",
             "3",
+            "--zeolite-scaling",
+            "--plot",
+            "zeolite_scaling.png",
         ],
         [
             sys.executable,
@@ -38,4 +41,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

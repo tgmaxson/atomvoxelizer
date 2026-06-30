@@ -79,6 +79,7 @@ Run the backend benchmark with:
 
 ```bash
 python benchmarks/benchmark_backends.py --backends numpy numba taichi cupy
+python benchmarks/benchmark_backends.py --zeolite-scaling --framework BEA --resolution 0.5 --plot zeolite_scaling.png
 ```
 
 Run the built-in structure benchmarks for a zeolite and a roughly 1000 atom Wulff

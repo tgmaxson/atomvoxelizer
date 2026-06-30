@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import time
 from pathlib import Path
 
@@ -40,6 +41,10 @@ def make_synthetic_workload(cell_length, atom_count, seed):
 
 def make_zeolite_workload(framework, radius_scale):
     atoms = read(ROOT / "examples" / f"{framework.upper()}.cif")
+    return make_atoms_workload(atoms, radius_scale)
+
+
+def make_atoms_workload(atoms, radius_scale):
     centers = atoms.get_positions()
     radii = np.array([covalent_radii[atom.number] * radius_scale for atom in atoms], dtype=np.float64)
     return atoms.cell.array, centers, radii
@@ -103,10 +108,159 @@ def consistency_summary(values, reference):
     return occupied, total, float(np.max(np.abs(values - reference)))
 
 
+def benchmark_workload(workload, backend_names, repeats):
+    cell, centers, radii = workload["cell"], workload["centers"], workload["radii"]
+    rows = []
+    reference = None
+    for backend in backend_names:
+        try:
+            cls = load_backend(backend)
+            times, grid = time_backend(cls, cell, workload["resolution"], centers, radii, repeats)
+        except ImportError as exc:
+            rows.append(
+                {
+                    "workload": workload["name"],
+                    "scale": workload.get("scale", "-"),
+                    "backend": backend,
+                    "backend_name": "missing",
+                    "atoms": len(centers),
+                    "gpts": "-",
+                    "best_s": np.nan,
+                    "mean_s": np.nan,
+                    "std_s": np.nan,
+                    "occupied": 0,
+                    "value_sum": np.nan,
+                    "max_abs_diff": np.nan,
+                    "note": str(exc),
+                }
+            )
+            continue
+
+        values = grid.to_numpy()
+        if reference is None:
+            reference = values
+        occupied, total, max_abs_diff = consistency_summary(values, reference)
+        rows.append(
+            {
+                "workload": workload["name"],
+                "scale": workload.get("scale", "-"),
+                "backend": backend,
+                "backend_name": grid.backend_name,
+                "atoms": len(centers),
+                "gpts": "x".join(str(int(x)) for x in grid.gpts),
+                "best_s": float(times.min()),
+                "mean_s": float(times.mean()),
+                "std_s": float(times.std()),
+                "occupied": occupied,
+                "value_sum": total,
+                "max_abs_diff": max_abs_diff,
+                "note": "",
+            }
+        )
+    return rows
+
+
+def format_float(value, precision=4):
+    if not np.isfinite(value):
+        return "n/a"
+    return f"{value:.{precision}f}"
+
+
+def print_table(rows):
+    headers = [
+        "workload",
+        "scale",
+        "backend",
+        "atoms",
+        "gpts",
+        "best [s]",
+        "mean [s]",
+        "std [s]",
+        "max |diff|",
+        "note",
+    ]
+    table_rows = []
+    for row in rows:
+        table_rows.append(
+            [
+                row["workload"],
+                row["scale"],
+                f"{row['backend']} ({row['backend_name']})",
+                str(row["atoms"]),
+                row["gpts"],
+                format_float(row["best_s"]),
+                format_float(row["mean_s"]),
+                format_float(row["std_s"]),
+                format_float(row["max_abs_diff"], precision=3),
+                row["note"],
+            ]
+        )
+
+    widths = [
+        max(len(str(value)) for value in [header] + [table_row[i] for table_row in table_rows])
+        for i, header in enumerate(headers)
+    ]
+    header_line = "  ".join(header.ljust(widths[i]) for i, header in enumerate(headers))
+    separator = "  ".join("-" * width for width in widths)
+    print(header_line)
+    print(separator)
+    for table_row in table_rows:
+        print("  ".join(str(value).ljust(widths[i]) for i, value in enumerate(table_row)))
+
+
+def zeolite_scaling_workloads(framework, resolution, radius_scale):
+    atoms = read(ROOT / "examples" / f"{framework.upper()}.cif")
+    scale_factors = [(1, 1, 1), (1, 1, 2), (1, 2, 2), (2, 2, 2)]
+    workloads = []
+    for scale in scale_factors:
+        scaled_atoms = atoms.repeat(scale)
+        cell, centers, radii = make_atoms_workload(scaled_atoms, radius_scale)
+        workloads.append(
+            {
+                "name": f"{framework.upper()} zeolite",
+                "scale": "x".join(str(value) for value in scale),
+                "cell": cell,
+                "centers": centers,
+                "radii": radii,
+                "resolution": resolution,
+            }
+        )
+    return workloads
+
+
+def plot_scaling(rows, output_path):
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
+    backends = []
+    for row in rows:
+        if row["backend_name"] != "missing" and row["backend"] not in backends:
+            backends.append(row["backend"])
+
+    for backend in backends:
+        backend_rows = [row for row in rows if row["backend"] == backend and row["backend_name"] != "missing"]
+        backend_rows.sort(key=lambda row: row["atoms"])
+        ax.plot(
+            [row["atoms"] for row in backend_rows],
+            [row["best_s"] for row in backend_rows],
+            marker="o",
+            label=backend,
+        )
+
+    ax.set_xlabel("atom count")
+    ax.set_ylabel("best time [s]")
+    ax.set_title("Zeolite voxelization scaling")
+    ax.legend()
+    fig.savefig(output_path, dpi=200)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Benchmark AtomVoxelizer backends.")
     parser.add_argument("--backends", nargs="+", default=["numpy", "numba", "taichi", "cupy"])
     parser.add_argument("--workload", choices=["synthetic", "zeolite", "wulff"], default="zeolite")
+    parser.add_argument("--zeolite-scaling", action="store_true")
+    parser.add_argument("--plot", default=None, help="Output path for benchmark plot.")
     parser.add_argument("--resolution", type=float, default=0.25)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--radius-scale", type=float, default=1.0)
@@ -118,32 +272,29 @@ def main():
     parser.add_argument("--seed", type=int, default=123)
     args = parser.parse_args()
 
-    cell, centers, radii = make_workload(args)
-    reference = None
+    if args.zeolite_scaling:
+        workloads = zeolite_scaling_workloads(args.framework, args.resolution, args.radius_scale)
+    else:
+        cell, centers, radii = make_workload(args)
+        workloads = [
+            {
+                "name": args.workload,
+                "cell": cell,
+                "centers": centers,
+                "radii": radii,
+                "resolution": args.resolution,
+            }
+        ]
 
-    print(
-        "workload,backend,backend_name,atoms,gpts,best_s,mean_s,std_s,"
-        "occupied_voxels,value_sum,max_abs_diff"
-    )
-    for backend in args.backends:
-        try:
-            cls = load_backend(backend)
-            times, grid = time_backend(cls, cell, args.resolution, centers, radii, args.repeats)
-        except ImportError as exc:
-            print(f"{args.workload},{backend},missing,{len(centers)},(),nan,nan,nan,0,nan,nan # {exc}")
-            continue
+    rows = []
+    for workload in workloads:
+        rows.extend(benchmark_workload(workload, args.backends, args.repeats))
 
-        values = grid.to_numpy()
-        if reference is None:
-            reference = values
-        occupied, total, max_abs_diff = consistency_summary(values, reference)
-        print(
-            f"{args.workload},{backend},{grid.backend_name},{len(centers)},"
-            f"{tuple(int(x) for x in grid.gpts)},{times.min():.6f},{times.mean():.6f},"
-            f"{times.std():.6f},{occupied},{total:.6f},{max_abs_diff:.6g}"
-        )
+    print_table(rows)
+    if args.plot:
+        plot_scaling(rows, args.plot)
+        print(f"\nplot: {args.plot}")
 
 
 if __name__ == "__main__":
     main()
-

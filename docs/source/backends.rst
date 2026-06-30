@@ -56,9 +56,30 @@ installed:
 The current Taichi backend initializes Taichi with ``arch=ti.cpu`` so it can be
 tested consistently on machines without GPU access.
 
+The current Taichi CPU backend is not expected to beat NumPy on every benchmark.
+It launches Taichi kernels for many small sphere operations and pays Taichi JIT
+and kernel-dispatch overhead. Numba batches equal-radius atoms into compiled
+loops, while the NumPy backend uses efficient indexed array updates. Taichi is
+included as an experimental backend and is a better target for future batched
+or GPU-oriented kernels than for the current small CPU workloads.
+
 Consistency
 -----------
 
 The tests compare NumPy, Numba, and Taichi CPU results on the same deterministic
 workload. CuPy tests are included but skipped when CuPy is not installed.
 
+Benchmarking
+------------
+
+Run a single workload benchmark with an aligned table:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_backends.py --workload zeolite --backends numpy numba taichi
+
+Run zeolite supercell scaling and save a plot:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_backends.py --zeolite-scaling --framework BEA --resolution 0.5 --plot zeolite_scaling.png
