@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+import time
 
 import numpy as np
 from ase.data import covalent_radii
@@ -25,29 +26,44 @@ def parse_args():
         help="Run a resolution-convergence study for the given resolutions in Angstrom.",
     )
     parser.add_argument("--core-scale", type=float, default=0.9)
+    parser.add_argument(
+        "--surface-method",
+        choices=["voxel-faces", "marching-cubes"],
+        default="voxel-faces",
+        help="Surface-area estimator. voxel-faces is much faster; marching-cubes gives a smoother triangulated surface.",
+    )
     parser.add_argument("--plot", default=None, help="Output path for convergence plot.")
     return parser.parse_args()
 
 
-def analyze_zeolite(atoms, resolution, core_scale):
+def analyze_zeolite(atoms, resolution, core_scale, surface_method="voxel-faces"):
+    start = time.perf_counter()
     grid = VoxelGrid(cell=atoms.cell.array, resolution=resolution)
     centers = atoms.get_positions()
     core_radii = np.array([covalent_radii[atom.number] * core_scale for atom in atoms], dtype=np.float64)
     grid.set_spheres(centers, core_radii, value=1.0)
 
     analysis = VoxelGridAnalysis(grid)
-    pore_regions = analysis.analyze_regions(max_value=0.0)
-    pore_volume_a3 = sum(region.volume for region in pore_regions)
-    pore_area_a2 = sum(region.surface_area for region in pore_regions)
+    pore_mask = analysis.mask(max_value=0.0)
+    _labels, region_count = analysis.connected_components(pore_mask, periodic=True)
+    pore_volume_a3 = analysis.region_volume(pore_mask)
+    if surface_method == "marching-cubes":
+        pore_area_a2 = analysis.surface_area(pore_mask, periodic=True)
+    elif surface_method == "voxel-faces":
+        pore_area_a2 = analysis.surface_area_voxel_faces(pore_mask, periodic=True)
+    else:
+        raise ValueError("surface_method must be 'voxel-faces' or 'marching-cubes'")
     mass_amu = float(np.sum(atoms.get_masses()))
     return {
         "resolution": float(resolution),
-        "regions": len(pore_regions),
+        "regions": region_count,
         "gpts": tuple(int(value) for value in grid.gpts),
         "pore_volume_a3": pore_volume_a3,
         "pore_volume_cm3_g": analysis.volume_angstrom3_to_cm3_per_g(pore_volume_a3, mass_amu),
         "surface_area_a2": pore_area_a2,
         "surface_area_m2_g": analysis.area_angstrom2_to_m2_per_g(pore_area_a2, mass_amu),
+        "surface_method": surface_method,
+        "elapsed_s": time.perf_counter() - start,
     }
 
 
@@ -85,6 +101,8 @@ def print_result(result):
     print(f"resolution={result['resolution']:.3f} A")
     print(f"gpts={result['gpts']}")
     print(f"regions={result['regions']}")
+    print(f"surface_method={result['surface_method']}")
+    print(f"elapsed={result['elapsed_s']:.2f} s")
     print(f"pore_volume={result['pore_volume_a3']:.3f} A^3")
     print(f"pore_volume={result['pore_volume_cm3_g']:.4f} cm^3/g")
     print(f"internal_surface_area={result['surface_area_a2']:.3f} A^2")
@@ -97,19 +115,25 @@ def main():
 
     print(f"framework={args.framework.upper()}")
     print(f"atoms={len(atoms)}")
+    print(f"surface_method={args.surface_method}")
     if args.convergence:
-        results = [analyze_zeolite(atoms, resolution, args.core_scale) for resolution in args.convergence]
-        print("resolution_A,gpts,regions,pore_volume_cm3_g,surface_area_m2_g")
-        for result in results:
+        results = []
+        print("resolution_A,gpts,regions,pore_volume_cm3_g,surface_area_m2_g,elapsed_s")
+        for index, resolution in enumerate(args.convergence, start=1):
+            print(f"[{index}/{len(args.convergence)}] starting resolution={resolution:.4f} A", flush=True)
+            result = analyze_zeolite(atoms, resolution, args.core_scale, surface_method=args.surface_method)
+            results.append(result)
             print(
                 f"{result['resolution']:.4f},{result['gpts']},{result['regions']},"
-                f"{result['pore_volume_cm3_g']:.6f},{result['surface_area_m2_g']:.6f}"
+                f"{result['pore_volume_cm3_g']:.6f},{result['surface_area_m2_g']:.6f},"
+                f"{result['elapsed_s']:.2f}",
+                flush=True,
             )
         if args.plot:
             plot_convergence(results, args.plot)
             print(f"plot={args.plot}")
     else:
-        print_result(analyze_zeolite(atoms, args.resolution, args.core_scale))
+        print_result(analyze_zeolite(atoms, args.resolution, args.core_scale, surface_method=args.surface_method))
 
 
 if __name__ == "__main__":

@@ -72,3 +72,26 @@ def test_periodic_surface_area_removes_cell_boundary_surface_for_full_mask():
 
     assert analysis.surface_area(selected, periodic=True) == pytest.approx(0.0)
     assert analysis.surface_area(selected, periodic=False) > 0.0
+
+
+def test_voxel_face_surface_area_counts_exposed_faces():
+    grid = VoxelGrid(np.eye(3) * 4.0, gpts=(4, 4, 4))
+    selected = np.zeros(grid.grid.shape, dtype=bool)
+    selected[1:3, 1:3, 1:3] = True
+    analysis = VoxelGridAnalysis(grid)
+
+    assert analysis.surface_area_voxel_faces(selected, periodic=True) == pytest.approx(24.0)
+    assert analysis.surface_area_voxel_faces(selected, periodic=False) == pytest.approx(24.0)
+
+
+def test_analyze_regions_supports_voxel_face_surface_method():
+    grid = VoxelGrid(np.eye(3) * 4.0, gpts=(4, 4, 4))
+    grid.grid[1:3, 1:3, 1:3] = 1.0
+
+    regions = VoxelGridAnalysis(grid).analyze_regions(threshold=0.5, surface_method="voxel-faces")
+
+    assert len(regions) == 1
+    assert regions[0].surface_area == pytest.approx(24.0)
+
+    with pytest.raises(ValueError, match="surface_method"):
+        VoxelGridAnalysis(grid).analyze_regions(threshold=0.5, surface_method="bad")

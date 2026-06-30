@@ -34,6 +34,11 @@ conditions. Periodic connected components are merged across opposite cell faces;
 periodic surface areas are measured from a tiled mask and counted only for the
 central periodic image.
 
+For large convergence scans, ``surface_area_voxel_faces`` provides a faster
+periodic estimate by counting exposed voxel faces directly. This avoids the
+large 3x3x3 tiled array used by periodic marching cubes, at the cost of a
+grid-aligned rather than smoothed surface.
+
 Zeolite Pore Volume And Surface Area
 ------------------------------------
 
@@ -65,11 +70,14 @@ The same workflow is provided as ``examples/zeolite/zeolite_analysis.py``:
 
    python examples/zeolite/zeolite_analysis.py BEA --resolution 0.25
 
-The example can also run a resolution-convergence study and save a plot:
+The example can also run a resolution-convergence study and save a plot. It uses
+the fast ``voxel-faces`` surface estimator by default; pass
+``--surface-method marching-cubes`` when you need the smoother marching-cubes
+surface and the grid is small enough.
 
 .. code-block:: bash
 
-   python examples/zeolite/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 0.35 --plot bea_convergence.png
+   python examples/zeolite/zeolite_analysis.py BEA --convergence 1.00 0.95 0.90 0.85 0.80 0.75 0.70 0.65 0.60 0.55 0.50 0.45 0.40 0.35 0.30 0.25 0.20 0.15 0.10 0.05 --plot bea_convergence.png
 
 Experimental Comparison
 -----------------------

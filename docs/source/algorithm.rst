@@ -56,12 +56,32 @@ Periodic Analysis
 * Scalar-field analysis traces a mesh at a specified value with
   ``mesh_at_value``. For a nearest-atom distance field, this traces a surface at
   a fixed distance from the atoms.
+* Fast grid-face area analysis counts selected/unselected voxel-face boundaries
+  directly with ``surface_area_voxel_faces``. This is much faster for very fine
+  periodic convergence scans, but it is a voxel-face estimate rather than a
+  smoothed triangular surface.
 
 For periodic scalar meshes, AtomVoxelizer tiles the grid, runs marching cubes on
 the tiled field, keeps triangles associated with the central periodic image, and
 clips boundary-crossing triangles to the primary cell. Clipping is important:
 wrapping vertices back into the primary cell would create long triangles across
 the cell boundary.
+
+Periodic Surface Example
+------------------------
+
+The Pt(211) example builds a periodic stepped slab, computes a nearest-atom
+distance field, and traces a periodic surface at a fixed distance from the slab.
+The mesh is clipped at the periodic cell boundary rather than wrapped.
+
+.. code-block:: bash
+
+   python examples/surfaces/pt211_distance_surface.py --resolution 0.45 \
+       --cutoff 3.5 --distance 1.8 --plot docs/source/_static/pt211_distance_surface.png
+
+.. image:: _static/pt211_distance_surface.png
+   :alt: Periodic Pt(211) nearest-atom distance isosurface
+   :width: 85%
 
 Acceleration Strategy
 ---------------------
@@ -209,7 +229,9 @@ The zeolite analysis example can be used to inspect resolution convergence:
 
 .. code-block:: bash
 
-   python examples/zeolite/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 \
+   python examples/zeolite/zeolite_analysis.py BEA --convergence \
+       1.00 0.95 0.90 0.85 0.80 0.75 0.70 0.65 0.60 0.55 \
+       0.50 0.45 0.40 0.35 0.30 0.25 0.20 0.15 0.10 0.05 \
        --plot docs/source/_static/zeolite_convergence.png
 
 .. image:: _static/zeolite_convergence.png

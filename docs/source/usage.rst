@@ -105,6 +105,14 @@ surface mesh:
    python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --output pt_surface.npz
    python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --show
 
+The periodic surface example in ``examples/surfaces/pt211_distance_surface.py``
+uses the same distance-field workflow for a Pt(211) slab with periodic boundary
+conditions:
+
+.. code-block:: bash
+
+   python examples/surfaces/pt211_distance_surface.py --distance 1.8 --show
+
 Run tests and benchmarks with:
 
 .. code-block:: bash

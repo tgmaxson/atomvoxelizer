@@ -7,13 +7,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 project = "AtomVoxelizer"
 author = "AtomVoxelizer contributors"
-release = "0.2.1"
+release = "0.2.2"
 
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
 ]
+autodoc_mock_imports = ["cupy"]
 
 templates_path = ["_templates"]
 exclude_patterns: list[str] = []

@@ -87,8 +87,12 @@ The analysis example estimates pore volume and internal surface area:
 ```bash
 pip install -e ".[examples,analysis]"
 python examples/zeolite/zeolite_analysis.py BEA --resolution 0.25
-python examples/zeolite/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 --plot bea_convergence.png
+python examples/zeolite/zeolite_analysis.py BEA --convergence 1.00 0.95 0.90 0.85 0.80 0.75 0.70 0.65 0.60 0.55 0.50 0.45 0.40 0.35 0.30 0.25 0.20 0.15 0.10 0.05 --plot bea_convergence.png
 ```
+
+The analysis example uses a fast voxel-face surface-area estimate by default.
+Use `--surface-method marching-cubes` for a smoother marching-cubes estimate on
+smaller grids.
 
 ## Wulff Distance-Surface Example
 
@@ -100,6 +104,16 @@ pip install -e ".[examples,analysis]"
 python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --output pt_surface.npz
 python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --plot pt_surface.png
 python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --show
+```
+
+## Periodic Surface Example
+
+The Pt(211) example traces a periodic nearest-atom distance surface for a
+stepped slab:
+
+```bash
+pip install -e ".[examples,analysis]"
+python examples/surfaces/pt211_distance_surface.py --distance 1.8 --show
 ```
 
 ## Tests and Benchmarks

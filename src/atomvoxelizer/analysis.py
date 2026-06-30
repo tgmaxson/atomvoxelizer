@@ -108,6 +108,48 @@ class VoxelGridAnalysis:
         real_vertices = self._index_vertices_to_real(vertices)
         return self._mesh_surface_area(real_vertices, faces)
 
+    def surface_area_voxel_faces(self, selected, periodic=True):
+        """Estimate surface area by counting exposed voxel faces.
+
+        This is faster than marching cubes and avoids tiled periodic volumes. It
+        is a grid-face estimate rather than a smoothed triangular surface, so it
+        is most useful for fast convergence scans or large grids.
+        """
+        selected = np.asarray(selected, dtype=bool)
+        if not np.any(selected):
+            return 0.0
+        if periodic and np.all(selected):
+            return 0.0
+
+        voxel_vectors = self.cell / self.gpts[:, None]
+        face_areas = np.array(
+            [
+                np.linalg.norm(np.cross(voxel_vectors[1], voxel_vectors[2])),
+                np.linalg.norm(np.cross(voxel_vectors[0], voxel_vectors[2])),
+                np.linalg.norm(np.cross(voxel_vectors[0], voxel_vectors[1])),
+            ],
+            dtype=float,
+        )
+
+        area = 0.0
+        for axis, face_area in enumerate(face_areas):
+            if periodic:
+                exposed = selected != np.roll(selected, -1, axis=axis)
+                area += float(np.count_nonzero(exposed)) * face_area
+            else:
+                inner_a = [slice(None)] * selected.ndim
+                inner_b = [slice(None)] * selected.ndim
+                inner_a[axis] = slice(None, -1)
+                inner_b[axis] = slice(1, None)
+                exposed = selected[tuple(inner_a)] != selected[tuple(inner_b)]
+                area += float(np.count_nonzero(exposed)) * face_area
+
+                first = np.take(selected, 0, axis=axis)
+                last = np.take(selected, -1, axis=axis)
+                area += float(np.count_nonzero(first) + np.count_nonzero(last)) * face_area
+
+        return area
+
     def mesh_at_value(self, level, periodic=True, clip_periodic=True):
         """Return a marching-cubes mesh for a scalar voxel value.
 
@@ -169,8 +211,11 @@ class VoxelGridAnalysis:
         above=True,
         connectivity=1,
         periodic=True,
+        surface_method="marching-cubes",
     ):
         """Return volume and marching-cubes area for each connected region."""
+        if surface_method not in {"marching-cubes", "voxel-faces"}:
+            raise ValueError("surface_method must be 'marching-cubes' or 'voxel-faces'")
         selected = self.mask(min_value=min_value, max_value=max_value, threshold=threshold, above=above)
         labels, label_count = self.connected_components(selected, connectivity=connectivity, periodic=periodic)
 
@@ -178,12 +223,16 @@ class VoxelGridAnalysis:
         for label_id in range(1, label_count + 1):
             region_mask = labels == label_id
             voxel_count = int(np.count_nonzero(region_mask))
+            if surface_method == "marching-cubes":
+                surface_area = self.surface_area(region_mask, periodic=periodic)
+            else:
+                surface_area = self.surface_area_voxel_faces(region_mask, periodic=periodic)
             regions.append(
                 VoxelRegion(
                     label=label_id,
                     voxel_count=voxel_count,
                     volume=voxel_count * self.voxel_volume,
-                    surface_area=self.surface_area(region_mask, periodic=periodic),
+                    surface_area=surface_area,
                 )
             )
         return regions
