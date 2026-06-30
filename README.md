@@ -145,7 +145,11 @@ Backends whose optional dependencies are not installed are reported as missing.
 
 ## Documentation
 
-Documentation is scaffolded with Sphinx for Read the Docs.
+The hosted documentation is available at:
+
+https://atomvoxelizer.readthedocs.io/en/latest/index.html
+
+Documentation is built with Sphinx for Read the Docs.
 
 Build it locally with:
 
