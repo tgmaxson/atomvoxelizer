@@ -108,6 +108,59 @@ class VoxelGridAnalysis:
         real_vertices = self._index_vertices_to_real(vertices)
         return self._mesh_surface_area(real_vertices, faces)
 
+    def mesh_at_value(self, level, periodic=True, clip_periodic=True):
+        """Return a marching-cubes mesh for a scalar voxel value.
+
+        ``level`` is interpreted in the units stored in the voxel grid. For a
+        distance-mask grid this traces the surface at a fixed distance from the
+        nearest atom. Vertices are returned in real-space coordinates and faces
+        index into that vertex array. Periodic meshes are clipped to the primary
+        cell by default so boundary-crossing triangles are cut at the cell edge
+        instead of being wrapped across the cell.
+        """
+        try:
+            from skimage.measure import marching_cubes
+        except ImportError as exc:  # pragma: no cover - depends on optional dependency
+            raise ImportError(
+                "VoxelGridAnalysis requires scikit-image. Install it with "
+                "`pip install scikit-image`."
+            ) from exc
+
+        level = float(level)
+        grid = self._finite_grid_for_level(level)
+        finite = grid[np.isfinite(grid)]
+        if finite.size == 0 or level < finite.min() or level > finite.max():
+            raise ValueError("level must lie within the finite voxel value range")
+
+        if periodic:
+            values = np.tile(grid.astype(np.float32), (3, 3, 3))
+            vertices, faces, _normals, _values = marching_cubes(values, level=level)
+            central_offset = self.gpts
+            centroids = vertices[faces].mean(axis=1)
+            in_central_cell = np.all((centroids >= central_offset) & (centroids < 2 * central_offset), axis=1)
+            faces = faces[in_central_cell]
+            vertices = vertices - central_offset
+            if clip_periodic:
+                vertices, faces = self._clip_mesh_to_index_cell(vertices, faces)
+        else:
+            vertices, faces, _normals, _values = marching_cubes(grid.astype(np.float32), level=level)
+
+        if faces.size == 0:
+            return np.empty((0, 3), dtype=float), np.empty((0, 3), dtype=int)
+
+        used = np.unique(faces)
+        remap = np.full(vertices.shape[0], -1, dtype=int)
+        remap[used] = np.arange(used.shape[0])
+        real_vertices = self._index_vertices_to_real(vertices[used])
+        return real_vertices, remap[faces]
+
+    def surface_area_at_value(self, level, periodic=True, clip_periodic=True):
+        """Estimate the area of a scalar isosurface at ``level``."""
+        vertices, faces = self.mesh_at_value(level=level, periodic=periodic, clip_periodic=clip_periodic)
+        if faces.size == 0:
+            return 0.0
+        return self._mesh_surface_area(vertices, faces)
+
     def analyze_regions(
         self,
         min_value=None,
@@ -154,6 +207,69 @@ class VoxelGridAnalysis:
     def _index_vertices_to_real(self, vertices):
         frac = vertices / self.gpts
         return frac @ self.cell
+
+    def _finite_grid_for_level(self, level):
+        grid = np.asarray(self.grid, dtype=np.float32)
+        if np.all(np.isfinite(grid)):
+            return grid
+
+        finite = grid[np.isfinite(grid)]
+        if finite.size == 0:
+            return grid
+
+        high = max(float(finite.max()), float(level)) + 1.0
+        low = min(float(finite.min()), float(level)) - 1.0
+        clean = grid.copy()
+        clean[np.isposinf(clean)] = high
+        clean[np.isneginf(clean)] = low
+        return clean
+
+    def _clip_mesh_to_index_cell(self, vertices, faces):
+        clipped_vertices = []
+        clipped_faces = []
+        bounds = [(0.0, float(n)) for n in self.gpts]
+
+        for face in faces:
+            polygon = [vertices[int(vertex_index)].astype(float) for vertex_index in face]
+            for axis, (low, high) in enumerate(bounds):
+                polygon = self._clip_polygon_axis(polygon, axis, low, keep_greater=True)
+                polygon = self._clip_polygon_axis(polygon, axis, high, keep_greater=False)
+                if len(polygon) < 3:
+                    break
+            if len(polygon) < 3:
+                continue
+
+            start = len(clipped_vertices)
+            clipped_vertices.extend(polygon)
+            for index in range(1, len(polygon) - 1):
+                clipped_faces.append((start, start + index, start + index + 1))
+
+        if not clipped_faces:
+            return np.empty((0, 3), dtype=float), np.empty((0, 3), dtype=int)
+        return np.asarray(clipped_vertices, dtype=float), np.asarray(clipped_faces, dtype=int)
+
+    @staticmethod
+    def _clip_polygon_axis(polygon, axis, boundary, keep_greater):
+        if not polygon:
+            return []
+
+        clipped = []
+        previous = polygon[-1]
+        previous_inside = previous[axis] >= boundary if keep_greater else previous[axis] <= boundary
+
+        for current in polygon:
+            current_inside = current[axis] >= boundary if keep_greater else current[axis] <= boundary
+            if current_inside != previous_inside:
+                delta = current[axis] - previous[axis]
+                if delta != 0.0:
+                    t = (boundary - previous[axis]) / delta
+                    clipped.append(previous + t * (current - previous))
+            if current_inside:
+                clipped.append(current)
+            previous = current
+            previous_inside = current_inside
+
+        return clipped
 
     @staticmethod
     def _merge_periodic_labels(labels, selected):
@@ -202,6 +318,11 @@ class VoxelGridAnalysis:
         triangles = vertices[faces]
         cross = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
         return float(0.5 * np.linalg.norm(cross, axis=1).sum())
+
+    @staticmethod
+    def mesh_surface_area(vertices, faces):
+        """Return the area of a triangular mesh."""
+        return VoxelGridAnalysis._mesh_surface_area(np.asarray(vertices), np.asarray(faces, dtype=int))
 
 
 __all__ = ["VoxelGridAnalysis", "VoxelRegion"]

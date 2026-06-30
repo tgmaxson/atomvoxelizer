@@ -48,6 +48,25 @@ grid.set_sphere(center=np.array([2.0, 2.0, 2.0]), radius=0.5, value=-1.0)
 grid.clamp_grid(min_val=-1.0, max_val=1.0)
 ```
 
+Sphere operations accept two masks. `mask="constant"` writes the supplied value
+or factor across the sphere. `mask="distance"` writes the real-space distance
+from the sphere center at each voxel. Combining a distance mask with
+`min_spheres` gives a nearest-atom distance field:
+
+```python
+from atomvoxelizer import VoxelGridAnalysis
+
+grid.grid.fill(np.inf)
+grid.min_spheres(atom_positions, cutoff_radii, mask="distance")
+
+analysis = VoxelGridAnalysis(grid)
+vertices, faces = analysis.mesh_at_value(2.0, periodic=True)
+surface_area = analysis.mesh_surface_area(vertices, faces)
+```
+
+Periodic scalar meshes are clipped at the primary cell boundary so triangles
+that cross a periodic boundary are cut at the cell edge.
+
 ## Zeolite Example
 
 The zeolite example and CIF files live in `examples/`.
@@ -66,6 +85,17 @@ The analysis example estimates pore volume and internal surface area:
 pip install -e ".[examples,analysis]"
 python examples/zeolite_analysis.py BEA --resolution 0.25
 python examples/zeolite_analysis.py BEA --convergence 1.0 0.75 0.5 --plot bea_convergence.png
+```
+
+## Wulff Distance-Surface Example
+
+The Wulff example builds a nanoparticle, voxelizes the nearest-atom distance
+field, and exports a marching-cubes mesh at a requested distance:
+
+```bash
+pip install -e ".[examples,analysis]"
+python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --output pt_surface.npz
+python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --plot pt_surface.png
 ```
 
 ## Tests and Benchmarks

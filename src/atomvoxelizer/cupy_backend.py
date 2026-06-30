@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .voxelgrid import VoxelGrid, _cached_sphere_offsets
+from .voxelgrid import VoxelGrid, _cached_sphere_offsets, _cached_sphere_offsets_and_distances
 
 try:
     from .numba_backend import VoxelGridNumba as _BaseVoxelGrid
@@ -45,41 +45,64 @@ class VoxelGridCuPy(_BaseVoxelGrid):
         indices = (offsets + center_idx) % self.gpts
         return tuple(cp.asarray(indices[:, axis]) for axis in range(3))
 
-    def set_sphere(self, center, radius, value=1):
-        self.grid[self._sphere_indices(center, radius)] = value
+    def _sphere_indices_and_values(self, center, radius, value, mask):
+        self._validate_mask(mask)
+        center_idx = self._center_index(center)
+        if mask == "constant":
+            offsets = _cached_sphere_offsets(float(radius), tuple(self.gpts), tuple(map(tuple, self.cell)))
+            values = value
+        else:
+            offsets, distances = _cached_sphere_offsets_and_distances(
+                float(radius), tuple(self.gpts), tuple(map(tuple, self.cell))
+            )
+            values = cp.asarray(distances) * value
+        indices = (offsets + center_idx) % self.gpts
+        return tuple(cp.asarray(indices[:, axis]) for axis in range(3)), values
 
-    def add_sphere(self, center, radius, value=1):
-        cp.add.at(self.grid, self._sphere_indices(center, radius), value)
+    def set_sphere(self, center, radius, value=1, mask="constant"):
+        indices, values = self._sphere_indices_and_values(center, radius, value, mask)
+        self.grid[indices] = values
 
-    def mul_sphere(self, center, radius, factor=2):
-        indices = self._sphere_indices(center, radius)
-        self.grid[indices] *= factor
+    def add_sphere(self, center, radius, value=1, mask="constant"):
+        indices, values = self._sphere_indices_and_values(center, radius, value, mask)
+        cp.add.at(self.grid, indices, values)
 
-    def div_sphere(self, center, radius, factor=2):
-        indices = self._sphere_indices(center, radius)
-        self.grid[indices] /= factor
+    def mul_sphere(self, center, radius, factor=2, mask="constant"):
+        indices, values = self._sphere_indices_and_values(center, radius, factor, mask)
+        self.grid[indices] *= values
 
-    def add_spheres(self, centers, radii, value=1):
-        centers = np.asarray(centers, dtype=np.float64)
-        radii = np.asarray(radii, dtype=np.float64)
-        if centers.ndim != 2 or centers.shape[1] != 3:
-            raise ValueError("centers must have shape (N, 3)")
-        if radii.ndim != 1 or radii.shape[0] != centers.shape[0]:
-            raise ValueError("radii must have shape (N,)")
+    def div_sphere(self, center, radius, factor=2, mask="constant"):
+        indices, values = self._sphere_indices_and_values(center, radius, factor, mask)
+        self.grid[indices] /= values
 
+    def min_sphere(self, center, radius, value=1, mask="distance"):
+        indices, values = self._sphere_indices_and_values(center, radius, value, mask)
+        cp.minimum.at(self.grid, indices, values)
+
+    def add_spheres(self, centers, radii, value=1, mask="constant"):
+        centers, radii = self._validate_spheres(centers, radii)
         for center, radius in zip(centers, radii):
-            self.add_sphere(center, float(radius), value=value)
+            self.add_sphere(center, float(radius), value=value, mask=mask)
 
-    def set_spheres(self, centers, radii, value=1):
-        centers = np.asarray(centers, dtype=np.float64)
-        radii = np.asarray(radii, dtype=np.float64)
-        if centers.ndim != 2 or centers.shape[1] != 3:
-            raise ValueError("centers must have shape (N, 3)")
-        if radii.ndim != 1 or radii.shape[0] != centers.shape[0]:
-            raise ValueError("radii must have shape (N,)")
-
+    def set_spheres(self, centers, radii, value=1, mask="constant"):
+        centers, radii = self._validate_spheres(centers, radii)
         for center, radius in zip(centers, radii):
-            self.set_sphere(center, float(radius), value=value)
+            self.set_sphere(center, float(radius), value=value, mask=mask)
+
+    def mul_spheres(self, centers, radii, factor=2, mask="constant"):
+        centers, radii = self._validate_spheres(centers, radii)
+        for center, radius in zip(centers, radii):
+            self.mul_sphere(center, float(radius), factor=factor, mask=mask)
+
+    def div_spheres(self, centers, radii, factor=2, mask="constant"):
+        centers, radii = self._validate_spheres(centers, radii)
+        for center, radius in zip(centers, radii):
+            self.div_sphere(center, float(radius), factor=factor, mask=mask)
+
+    def min_spheres(self, centers, radii, value=1, mask="distance"):
+        centers, radii = self._validate_spheres(centers, radii)
+        for center, radius in zip(centers, radii):
+            self.min_sphere(center, float(radius), value=value, mask=mask)
 
     def clamp_grid(self, min_val=0.0, max_val=1.0):
         self.grid = cp.clip(self.grid, min_val, max_val)

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .voxelgrid import VoxelGrid, _cached_sphere_offsets
+from .voxelgrid import VoxelGrid, _cached_sphere_offsets, _cached_sphere_offsets_and_distances
 
 _default_cache = Path.home() / ".cache"
 if not os.access(_default_cache, os.W_OK):
@@ -115,6 +115,98 @@ def _div_sphere_offsets(
 
 
 @ti.kernel
+def _set_sphere_distance_offsets(
+    grid: ti.template(),
+    center_idx: ti.types.ndarray(dtype=ti.i32, ndim=1),
+    offsets: ti.types.ndarray(dtype=ti.i32, ndim=2),
+    distances: ti.types.ndarray(dtype=ti.f32, ndim=1),
+    scale: ti.f32,
+):
+    for n in range(offsets.shape[0]):
+        x = (center_idx[0] + offsets[n, 0]) % grid.shape[0]
+        y = (center_idx[1] + offsets[n, 1]) % grid.shape[1]
+        z = (center_idx[2] + offsets[n, 2]) % grid.shape[2]
+        grid[x, y, z] = distances[n] * scale
+
+
+@ti.kernel
+def _add_sphere_distance_offsets(
+    grid: ti.template(),
+    center_idx: ti.types.ndarray(dtype=ti.i32, ndim=1),
+    offsets: ti.types.ndarray(dtype=ti.i32, ndim=2),
+    distances: ti.types.ndarray(dtype=ti.f32, ndim=1),
+    scale: ti.f32,
+):
+    for n in range(offsets.shape[0]):
+        x = (center_idx[0] + offsets[n, 0]) % grid.shape[0]
+        y = (center_idx[1] + offsets[n, 1]) % grid.shape[1]
+        z = (center_idx[2] + offsets[n, 2]) % grid.shape[2]
+        grid[x, y, z] += distances[n] * scale
+
+
+@ti.kernel
+def _mul_sphere_distance_offsets(
+    grid: ti.template(),
+    center_idx: ti.types.ndarray(dtype=ti.i32, ndim=1),
+    offsets: ti.types.ndarray(dtype=ti.i32, ndim=2),
+    distances: ti.types.ndarray(dtype=ti.f32, ndim=1),
+    scale: ti.f32,
+):
+    for n in range(offsets.shape[0]):
+        x = (center_idx[0] + offsets[n, 0]) % grid.shape[0]
+        y = (center_idx[1] + offsets[n, 1]) % grid.shape[1]
+        z = (center_idx[2] + offsets[n, 2]) % grid.shape[2]
+        grid[x, y, z] *= distances[n] * scale
+
+
+@ti.kernel
+def _div_sphere_distance_offsets(
+    grid: ti.template(),
+    center_idx: ti.types.ndarray(dtype=ti.i32, ndim=1),
+    offsets: ti.types.ndarray(dtype=ti.i32, ndim=2),
+    distances: ti.types.ndarray(dtype=ti.f32, ndim=1),
+    scale: ti.f32,
+):
+    for n in range(offsets.shape[0]):
+        x = (center_idx[0] + offsets[n, 0]) % grid.shape[0]
+        y = (center_idx[1] + offsets[n, 1]) % grid.shape[1]
+        z = (center_idx[2] + offsets[n, 2]) % grid.shape[2]
+        grid[x, y, z] /= distances[n] * scale
+
+
+@ti.kernel
+def _min_sphere_offsets(
+    grid: ti.template(),
+    center_idx: ti.types.ndarray(dtype=ti.i32, ndim=1),
+    offsets: ti.types.ndarray(dtype=ti.i32, ndim=2),
+    value: ti.f32,
+):
+    for n in range(offsets.shape[0]):
+        x = (center_idx[0] + offsets[n, 0]) % grid.shape[0]
+        y = (center_idx[1] + offsets[n, 1]) % grid.shape[1]
+        z = (center_idx[2] + offsets[n, 2]) % grid.shape[2]
+        if value < grid[x, y, z]:
+            grid[x, y, z] = value
+
+
+@ti.kernel
+def _min_sphere_distance_offsets(
+    grid: ti.template(),
+    center_idx: ti.types.ndarray(dtype=ti.i32, ndim=1),
+    offsets: ti.types.ndarray(dtype=ti.i32, ndim=2),
+    distances: ti.types.ndarray(dtype=ti.f32, ndim=1),
+    scale: ti.f32,
+):
+    for n in range(offsets.shape[0]):
+        x = (center_idx[0] + offsets[n, 0]) % grid.shape[0]
+        y = (center_idx[1] + offsets[n, 1]) % grid.shape[1]
+        z = (center_idx[2] + offsets[n, 2]) % grid.shape[2]
+        value = distances[n] * scale
+        if value < grid[x, y, z]:
+            grid[x, y, z] = value
+
+
+@ti.kernel
 def _clamp_grid(grid: ti.template(), min_val: ti.f32, max_val: ti.f32):
     for i, j, k in ti.ndrange(grid.shape[0], grid.shape[1], grid.shape[2]):
         value = grid[i, j, k]
@@ -140,41 +232,116 @@ class VoxelGridTaichi(VoxelGrid):
         """Return the voxel values as a NumPy array."""
         return self.grid.to_numpy()
 
-    def set_sphere(self, center, radius, value=1):
-        center_idx = self._center_index(center)
-        offsets = self._sphere_offsets(radius)
-        _set_sphere_offsets(self.grid, center_idx, offsets, float(value))
+    def _offsets_for_mask(self, radius, mask):
+        self._validate_mask(mask)
+        if mask == "constant":
+            return self._sphere_offsets(radius), None
+        return self._sphere_offsets_and_distances(radius)
 
-    def add_sphere(self, center, radius, value=1):
+    def set_sphere(self, center, radius, value=1, mask="constant"):
         center_idx = self._center_index(center)
-        offsets = self._sphere_offsets(radius)
-        _add_sphere_offsets(self.grid, center_idx, offsets, float(value))
+        offsets, distances = self._offsets_for_mask(radius, mask)
+        if mask == "constant":
+            _set_sphere_offsets(self.grid, center_idx, offsets, float(value))
+        else:
+            _set_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(value))
 
-    def mul_sphere(self, center, radius, factor=2):
+    def add_sphere(self, center, radius, value=1, mask="constant"):
         center_idx = self._center_index(center)
-        offsets = self._sphere_offsets(radius)
-        _mul_sphere_offsets(self.grid, center_idx, offsets, float(factor))
+        offsets, distances = self._offsets_for_mask(radius, mask)
+        if mask == "constant":
+            _add_sphere_offsets(self.grid, center_idx, offsets, float(value))
+        else:
+            _add_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(value))
 
-    def div_sphere(self, center, radius, factor=2):
+    def mul_sphere(self, center, radius, factor=2, mask="constant"):
         center_idx = self._center_index(center)
-        offsets = self._sphere_offsets(radius)
-        _div_sphere_offsets(self.grid, center_idx, offsets, float(factor))
+        offsets, distances = self._offsets_for_mask(radius, mask)
+        if mask == "constant":
+            _mul_sphere_offsets(self.grid, center_idx, offsets, float(factor))
+        else:
+            _mul_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(factor))
 
-    def add_spheres(self, centers, radii, value=1):
+    def div_sphere(self, center, radius, factor=2, mask="constant"):
+        center_idx = self._center_index(center)
+        offsets, distances = self._offsets_for_mask(radius, mask)
+        if mask == "constant":
+            _div_sphere_offsets(self.grid, center_idx, offsets, float(factor))
+        else:
+            _div_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(factor))
+
+    def min_sphere(self, center, radius, value=1, mask="distance"):
+        center_idx = self._center_index(center)
+        offsets, distances = self._offsets_for_mask(radius, mask)
+        if mask == "constant":
+            _min_sphere_offsets(self.grid, center_idx, offsets, float(value))
+        else:
+            _min_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(value))
+
+    def _grouped_offsets(self, radius, mask):
+        if mask == "constant":
+            return _cached_sphere_offsets(float(radius), tuple(self.gpts), tuple(map(tuple, self.cell))), None
+        return _cached_sphere_offsets_and_distances(float(radius), tuple(self.gpts), tuple(map(tuple, self.cell)))
+
+    def add_spheres(self, centers, radii, value=1, mask="constant"):
         centers, radii = self._validate_spheres(centers, radii)
+        self._validate_mask(mask)
         center_indices = self.positions_to_indices(centers)
         for radius in np.unique(radii):
-            offsets = _cached_sphere_offsets(float(radius), tuple(self.gpts), tuple(map(tuple, self.cell)))
+            offsets, distances = self._grouped_offsets(radius, mask)
             for center_idx in center_indices[radii == radius]:
-                _add_sphere_offsets(self.grid, center_idx, offsets, float(value))
+                if mask == "constant":
+                    _add_sphere_offsets(self.grid, center_idx, offsets, float(value))
+                else:
+                    _add_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(value))
 
-    def set_spheres(self, centers, radii, value=1):
+    def set_spheres(self, centers, radii, value=1, mask="constant"):
         centers, radii = self._validate_spheres(centers, radii)
+        self._validate_mask(mask)
         center_indices = self.positions_to_indices(centers)
         for radius in np.unique(radii):
-            offsets = _cached_sphere_offsets(float(radius), tuple(self.gpts), tuple(map(tuple, self.cell)))
+            offsets, distances = self._grouped_offsets(radius, mask)
             for center_idx in center_indices[radii == radius]:
-                _set_sphere_offsets(self.grid, center_idx, offsets, float(value))
+                if mask == "constant":
+                    _set_sphere_offsets(self.grid, center_idx, offsets, float(value))
+                else:
+                    _set_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(value))
+
+    def mul_spheres(self, centers, radii, factor=2, mask="constant"):
+        centers, radii = self._validate_spheres(centers, radii)
+        self._validate_mask(mask)
+        center_indices = self.positions_to_indices(centers)
+        for radius in np.unique(radii):
+            offsets, distances = self._grouped_offsets(radius, mask)
+            for center_idx in center_indices[radii == radius]:
+                if mask == "constant":
+                    _mul_sphere_offsets(self.grid, center_idx, offsets, float(factor))
+                else:
+                    _mul_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(factor))
+
+    def div_spheres(self, centers, radii, factor=2, mask="constant"):
+        centers, radii = self._validate_spheres(centers, radii)
+        self._validate_mask(mask)
+        center_indices = self.positions_to_indices(centers)
+        for radius in np.unique(radii):
+            offsets, distances = self._grouped_offsets(radius, mask)
+            for center_idx in center_indices[radii == radius]:
+                if mask == "constant":
+                    _div_sphere_offsets(self.grid, center_idx, offsets, float(factor))
+                else:
+                    _div_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(factor))
+
+    def min_spheres(self, centers, radii, value=1, mask="distance"):
+        centers, radii = self._validate_spheres(centers, radii)
+        self._validate_mask(mask)
+        center_indices = self.positions_to_indices(centers)
+        for radius in np.unique(radii):
+            offsets, distances = self._grouped_offsets(radius, mask)
+            for center_idx in center_indices[radii == radius]:
+                if mask == "constant":
+                    _min_sphere_offsets(self.grid, center_idx, offsets, float(value))
+                else:
+                    _min_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(value))
 
     def clamp_grid(self, min_val=0.0, max_val=1.0):
         _clamp_grid(self.grid, float(min_val), float(max_val))

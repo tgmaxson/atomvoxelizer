@@ -111,3 +111,34 @@ and synthesis route being modeled:
 
 Use the voxel result as a geometric internal-surface estimate, not as a direct
 replacement for adsorbate-specific BET analysis.
+
+Scalar Distance Surfaces
+------------------------
+
+Distance masks can be used to build scalar fields where each voxel stores the
+distance to the nearest atom within a chosen cutoff. ``mesh_at_value`` then
+traces a marching-cubes surface at a fixed distance:
+
+.. code-block:: python
+
+   import numpy as np
+
+   from atomvoxelizer import VoxelGrid, VoxelGridAnalysis
+
+   grid = VoxelGrid(atoms.cell.array, resolution=0.35)
+   grid.grid.fill(np.inf)
+   grid.min_spheres(atoms.get_positions(), cutoff_radii, mask="distance")
+
+   analysis = VoxelGridAnalysis(grid)
+   vertices, faces = analysis.mesh_at_value(level=2.0, periodic=True)
+   area = analysis.mesh_surface_area(vertices, faces)
+
+For periodic meshes, triangles that cross the boundary are clipped to the
+primary cell. Vertices are returned in real-space coordinates, and faces are
+integer indices into that vertex array.
+
+The Wulff construction example applies this workflow to a nanoparticle:
+
+.. code-block:: bash
+
+   python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --output pt_surface.npz

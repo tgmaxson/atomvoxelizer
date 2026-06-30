@@ -42,6 +42,21 @@ def _cached_sphere_offsets(radius, gpts, cell):
     return np.array(offsets, dtype=np.int32)
 
 
+@lru_cache(maxsize=200)
+def _cached_sphere_offsets_and_distances(radius, gpts, cell):
+    gpts_arr = np.array(gpts, dtype=np.int32)
+    cell_arr = np.array(cell, dtype=np.float64)
+    offsets = _cached_sphere_offsets(radius, gpts, cell)
+    distances = np.empty(offsets.shape[0], dtype=np.float32)
+
+    for index, offset in enumerate(offsets):
+        disp_frac = offset.astype(np.float64) / gpts_arr
+        disp = disp_frac @ cell_arr
+        distances[index] = np.sqrt(np.dot(disp, disp))
+
+    return offsets, distances
+
+
 class VoxelGrid:
     """Periodic voxel grid implemented with NumPy only."""
 
@@ -92,20 +107,47 @@ class VoxelGrid:
     def _sphere_offsets(self, radius):
         return _cached_sphere_offsets(float(radius), tuple(self.gpts), tuple(map(tuple, self.cell)))
 
+    def _sphere_offsets_and_distances(self, radius):
+        return _cached_sphere_offsets_and_distances(float(radius), tuple(self.gpts), tuple(map(tuple, self.cell)))
+
     def _sphere_indices(self, center, radius):
         return self._offset_indices(self._center_index(center), self._sphere_offsets(radius))
 
-    def set_sphere(self, center, radius, value=1):
-        self.grid[self._sphere_indices(center, radius)] = value
+    @staticmethod
+    def _validate_mask(mask):
+        if mask not in {"constant", "distance"}:
+            raise ValueError("mask must be 'constant' or 'distance'")
 
-    def add_sphere(self, center, radius, value=1):
-        np.add.at(self.grid, self._sphere_indices(center, radius), value)
+    def _sphere_indices_and_values(self, center, radius, value, mask):
+        self._validate_mask(mask)
+        center_idx = self._center_index(center)
+        if mask == "constant":
+            offsets = self._sphere_offsets(radius)
+            values = value
+        else:
+            offsets, values = self._sphere_offsets_and_distances(radius)
+            values = values * value
+        return self._offset_indices(center_idx, offsets), values
 
-    def mul_sphere(self, center, radius, factor=2):
-        self.grid[self._sphere_indices(center, radius)] *= factor
+    def set_sphere(self, center, radius, value=1, mask="constant"):
+        indices, values = self._sphere_indices_and_values(center, radius, value, mask)
+        self.grid[indices] = values
 
-    def div_sphere(self, center, radius, factor=2):
-        self.grid[self._sphere_indices(center, radius)] /= factor
+    def add_sphere(self, center, radius, value=1, mask="constant"):
+        indices, values = self._sphere_indices_and_values(center, radius, value, mask)
+        np.add.at(self.grid, indices, values)
+
+    def mul_sphere(self, center, radius, factor=2, mask="constant"):
+        indices, values = self._sphere_indices_and_values(center, radius, factor, mask)
+        self.grid[indices] *= values
+
+    def div_sphere(self, center, radius, factor=2, mask="constant"):
+        indices, values = self._sphere_indices_and_values(center, radius, factor, mask)
+        self.grid[indices] /= values
+
+    def min_sphere(self, center, radius, value=1, mask="distance"):
+        indices, values = self._sphere_indices_and_values(center, radius, value, mask)
+        np.minimum.at(self.grid, indices, values)
 
     def positions_to_indices(self, positions):
         positions = np.asarray(positions, dtype=np.float64)
@@ -122,15 +164,30 @@ class VoxelGrid:
             raise ValueError("radii must have shape (N,)")
         return centers, radii
 
-    def add_spheres(self, centers, radii, value=1):
+    def add_spheres(self, centers, radii, value=1, mask="constant"):
         centers, radii = self._validate_spheres(centers, radii)
         for center, radius in zip(centers, radii):
-            self.add_sphere(center, radius, value=value)
+            self.add_sphere(center, radius, value=value, mask=mask)
 
-    def set_spheres(self, centers, radii, value=1):
+    def set_spheres(self, centers, radii, value=1, mask="constant"):
         centers, radii = self._validate_spheres(centers, radii)
         for center, radius in zip(centers, radii):
-            self.set_sphere(center, radius, value=value)
+            self.set_sphere(center, radius, value=value, mask=mask)
+
+    def mul_spheres(self, centers, radii, factor=2, mask="constant"):
+        centers, radii = self._validate_spheres(centers, radii)
+        for center, radius in zip(centers, radii):
+            self.mul_sphere(center, radius, factor=factor, mask=mask)
+
+    def div_spheres(self, centers, radii, factor=2, mask="constant"):
+        centers, radii = self._validate_spheres(centers, radii)
+        for center, radius in zip(centers, radii):
+            self.div_sphere(center, radius, factor=factor, mask=mask)
+
+    def min_spheres(self, centers, radii, value=1, mask="distance"):
+        centers, radii = self._validate_spheres(centers, radii)
+        for center, radius in zip(centers, radii):
+            self.min_sphere(center, radius, value=value, mask=mask)
 
     def clamp_grid(self, min_val=0.0, max_val=1.0):
         np.clip(self.grid, min_val, max_val, out=self.grid)
@@ -305,4 +362,10 @@ class VoxelGrid:
 VoxelGridNumPy = VoxelGrid
 
 
-__all__ = ["VoxelGrid", "VoxelGridNumPy", "_cached_sphere_mask", "_cached_sphere_offsets"]
+__all__ = [
+    "VoxelGrid",
+    "VoxelGridNumPy",
+    "_cached_sphere_mask",
+    "_cached_sphere_offsets",
+    "_cached_sphere_offsets_and_distances",
+]
