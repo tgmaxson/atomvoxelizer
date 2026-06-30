@@ -30,8 +30,8 @@ supercell scaling:
 Zeolite Geometric Pore Analysis
 -------------------------------
 
-``examples/zeolite/zeolite_analysis.py`` estimates pore volume and internal
-surface area from the inverse of a framework-core mask:
+``examples/zeolite/zeolite_analysis.py`` estimates geometric pore volume and
+geometric internal surface area from the inverse of a framework-core mask:
 
 .. code-block:: bash
 

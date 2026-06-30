@@ -10,7 +10,7 @@ NumPy
 -----
 
 ``VoxelGrid`` is the default and always uses NumPy. It has no optional runtime
-dependencies and is the reference implementation used by the test suite.
+dependencies and is the reference implementation for backend behavior.
 
 ``VoxelGridNumPy`` is kept as an alias for ``VoxelGrid`` for callers that want
 to be explicit in benchmarks or tests.
@@ -41,7 +41,9 @@ runtime:
 
    pip install cupy-cuda12x
 
-GPU functionality is not exercised by the CPU-only test suite.
+GPU performance depends on problem size, data movement, and kernel-launch
+overhead. Small atom-by-atom workloads can be slower on a GPU even when CuPy is
+available.
 
 Taichi
 ------

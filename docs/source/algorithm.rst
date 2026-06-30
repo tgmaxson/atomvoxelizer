@@ -67,22 +67,6 @@ clips boundary-crossing triangles to the primary cell. Clipping is important:
 wrapping vertices back into the primary cell would create long triangles across
 the cell boundary.
 
-Periodic Surface Example
-------------------------
-
-The Pt(211) example builds a periodic stepped slab, computes a nearest-atom
-distance field, and traces a periodic surface at a fixed distance from the slab.
-The mesh is clipped at the periodic cell boundary rather than wrapped.
-
-.. code-block:: bash
-
-   python examples/surfaces/pt211_distance_surface.py --resolution 0.45 \
-       --cutoff 3.5 --distance 1.8 --plot docs/source/_static/pt211_distance_surface.png
-
-.. image:: _static/pt211_distance_surface.png
-   :alt: Periodic Pt(211) nearest-atom distance isosurface
-   :width: 85%
-
 Acceleration Strategy
 ---------------------
 
@@ -93,8 +77,8 @@ enough for small structures.
 The Numba backend inherits from ``VoxelGrid`` and replaces the hot mutating
 sphere operations with compiled loops. Its batch operations group atoms with the
 same radius, reuse cached stencils, and update a flattened grid array. This
-removes most Python overhead from repeated sphere painting and is currently the
-fastest CPU backend for the benchmark workloads below.
+removes most Python overhead from repeated sphere painting and is generally the
+fastest CPU backend for the current voxelization workloads.
 
 The CuPy backend stores the grid on a CUDA device and uses CuPy indexed updates.
 It is useful when the GPU workload is large enough to amortize data movement and
@@ -104,7 +88,8 @@ backends because each operation does relatively little work per launch.
 The Taichi backend provides CPU and GPU variants using Taichi kernels. The
 current implementation is experimental. It pays noticeable JIT and kernel
 dispatch overhead for many small sphere operations, so the CPU Taichi backend is
-not expected to outperform NumPy or Numba in the current benchmark shape.
+not expected to outperform NumPy or Numba for the current small sphere-update
+workloads.
 
 Optional Packages
 -----------------
@@ -129,123 +114,4 @@ The optional package requirements are:
    * - Documentation builds
      - ``sphinx``
 
-Benchmark Environment
----------------------
-
-The example benchmark data below was generated on this development machine:
-
-* CPU: AMD EPYC 7551P 32-Core Processor, 32 physical cores, single socket.
-* Python: 3.12.12.
-* Packages: NumPy 2.4.1, Numba 0.64.0, Taichi 1.7.4, scikit-image 0.26.0,
-  ASE 3.27.0.
-* GPU backends were not included in these measurements.
-* Each timing reports the best of three runs after a small warmup.
-
-BEA Zeolite Scaling
--------------------
-
-Command:
-
-.. code-block:: bash
-
-   python benchmarks/benchmark_backends.py --zeolite-scaling --framework BEA \
-       --resolution 0.5 --repeats 3 --backends numpy numba taichi \
-       --plot docs/source/_static/zeolite_scaling.png
-
-.. list-table::
-   :header-rows: 1
-
-   * - Scale
-     - Atoms
-     - Grid
-     - NumPy best [s]
-     - Numba best [s]
-     - Taichi CPU best [s]
-   * - 1x1x1
-     - 192
-     - 26x26x53
-     - 0.0133
-     - 0.0004
-     - 0.3116
-   * - 1x1x2
-     - 384
-     - 26x26x105
-     - 0.0262
-     - 0.0005
-     - 0.3989
-   * - 1x2x2
-     - 768
-     - 26x51x105
-     - 0.0497
-     - 0.0008
-     - 0.5129
-   * - 2x2x2
-     - 1536
-     - 51x51x105
-     - 0.1032
-     - 0.0013
-     - 0.8473
-
-.. image:: _static/zeolite_scaling.png
-   :alt: BEA zeolite backend scaling benchmark
-   :width: 90%
-
-Wulff Construction Benchmark
-----------------------------
-
-Command:
-
-.. code-block:: bash
-
-   python benchmarks/benchmark_backends.py --workload wulff --wulff-size 1000 \
-       --resolution 0.5 --repeats 3 --backends numpy numba taichi
-
-The generated Wulff construction contained 1103 atoms and used a 75x75x75 grid.
-
-.. list-table::
-   :header-rows: 1
-
-   * - Backend
-     - Best [s]
-     - Mean [s]
-     - Max absolute difference vs NumPy
-   * - NumPy
-     - 0.0973
-     - 0.0978
-     - 0.000
-   * - Numba
-     - 0.0027
-     - 0.0032
-     - 0.000
-   * - Taichi CPU
-     - 0.7198
-     - 0.7383
-     - 0.000
-
-Example Outputs
----------------
-
-The zeolite analysis example can be used to inspect resolution convergence:
-
-.. code-block:: bash
-
-   python examples/zeolite/zeolite_analysis.py BEA --convergence \
-       1.00 0.95 0.90 0.85 0.80 0.75 0.70 0.65 0.60 0.55 \
-       0.50 0.45 0.40 0.35 0.30 0.25 0.20 0.15 0.10 0.05 \
-       --plot docs/source/_static/zeolite_convergence.png
-
-.. image:: _static/zeolite_convergence.png
-   :alt: BEA zeolite pore-volume and surface-area convergence
-   :width: 90%
-
-The Wulff distance-surface example exports a mesh and can save or show a 3D
-Matplotlib preview:
-
-.. code-block:: bash
-
-   python examples/wulff/distance_surface.py --size 147 --resolution 0.8 \
-       --cutoff 3.5 --distance 1.8 --plot docs/source/_static/wulff_distance_surface.png
-
-.. image:: _static/wulff_distance_surface.png
-   :alt: Wulff nearest-atom distance isosurface
-   :width: 80%
+See :doc:`examples` for runnable examples, plots, and benchmark commands.

@@ -46,8 +46,8 @@ For zeolites, a common workflow is:
 
 1. Build an occupied framework mask from atomic cores.
 2. Analyze the inverse mask as the pore space.
-3. Sum connected-region volumes to estimate accessible pore volume.
-4. Sum marching-cubes surface areas to estimate internal surface area.
+3. Sum connected-region volumes to estimate geometric pore volume.
+4. Sum surface areas to estimate geometric internal surface area.
 
 Example:
 

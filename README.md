@@ -82,7 +82,8 @@ python examples/zeolite/zeolite_voxel.py BEA
 The script reads a framework CIF, builds voxel grids at several resolutions, plots
 middle XZ slices, benchmarks supercell scaling, and opens a 3D scatter plot.
 
-The analysis example estimates pore volume and internal surface area:
+The analysis example estimates geometric pore volume and geometric internal
+surface area:
 
 ```bash
 pip install -e ".[examples,analysis]"
@@ -90,8 +91,9 @@ python examples/zeolite/zeolite_analysis.py BEA --resolution 0.25
 python examples/zeolite/zeolite_analysis.py BEA --convergence 1.00 0.95 0.90 0.85 0.80 0.75 0.70 0.65 0.60 0.55 0.50 0.45 0.40 0.35 0.30 0.25 0.20 0.15 0.10 0.05 --plot bea_convergence.png
 ```
 
-The analysis example uses a fast voxel-face surface-area estimate by default.
-Use `--surface-method marching-cubes` for a smoother marching-cubes estimate on
+The analysis example reports geometric voxel estimates, not probe-accessible BET
+surface areas. It uses a fast voxel-face surface-area estimate by default. Use
+`--surface-method marching-cubes` for a smoother marching-cubes estimate on
 smaller grids.
 
 ## Wulff Distance-Surface Example
