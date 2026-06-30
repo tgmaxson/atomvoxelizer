@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "AtomVoxelizer"
-version = "0.2.2"
+version = "0.2.3"
 description = "Periodic atom-centered voxel grids for atomistic structures."
 readme = "README.md"
 requires-python = ">=3.9"
