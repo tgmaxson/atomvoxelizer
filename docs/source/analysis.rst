@@ -64,61 +64,9 @@ Example:
    pore_volume_cm3_g = analysis.volume_angstrom3_to_cm3_per_g(pore_volume_a3, mass_amu)
    internal_area_m2_g = analysis.area_angstrom2_to_m2_per_g(pore_area_a2, mass_amu)
 
-The same workflow is provided as ``examples/zeolite/zeolite_analysis.py``:
-
-.. code-block:: bash
-
-   python examples/zeolite/zeolite_analysis.py BEA --resolution 0.25
-
-The example can also run a resolution-convergence study and save a plot. It uses
-the fast ``voxel-faces`` surface estimator by default; pass
-``--surface-method marching-cubes`` when you need the smoother marching-cubes
-surface and the grid is small enough.
-
-.. code-block:: bash
-
-   python examples/zeolite/zeolite_analysis.py BEA --convergence 1.00 0.95 0.90 0.85 0.80 0.75 0.70 0.65 0.60 0.55 0.50 0.45 0.40 0.35 0.30 0.25 0.20 0.15 0.10 0.05 --plot bea_convergence.png
-
-Experimental Comparison
------------------------
-
-Experimental BET surface area and pore volume are usually reported as
-``m^2/g`` and ``cm^3/g``. Direct comparison to a geometric voxel model requires
-normalizing by the mass represented by the simulated unit cell or supercell and
-matching the experimental assumptions: framework composition, extra-framework
-cations, adsorbate probe size, activation state, defects, and whether the
-reported pore volume is micropore, mesopore, or total pore volume.
-
-AtomVoxelizer provides unit-conversion helpers once you know the mass represented
-by the simulated structure:
-
-.. code-block:: python
-
-   mass_amu = sum(atoms.get_masses())
-   pore_volume_cm3_g = analysis.volume_angstrom3_to_cm3_per_g(pore_volume_a3, mass_amu)
-   area_m2_g = analysis.area_angstrom2_to_m2_per_g(pore_area_a2, mass_amu)
-
-The comparison table should be filled with values from the specific material
-and synthesis route being modeled:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Framework
-     - Experimental BET surface area
-     - Experimental pore volume
-     - Notes
-   * - BEA
-     - source-specific
-     - source-specific
-     - Zeolite beta values depend strongly on Si/Al ratio and activation.
-   * - MWW/MCM-22
-     - source-specific
-     - source-specific
-     - MCM-22 reports often distinguish micropore and external surface area.
-
-Use the voxel result as a geometric internal-surface estimate, not as a direct
-replacement for adsorbate-specific BET analysis.
+See :doc:`examples` for zeolite scripts and convergence plots. The current
+zeolite values are geometric voxel estimates rather than probe-accessible BET or
+adsorbate-specific pore-volume estimates.
 
 Scalar Distance Surfaces
 ------------------------
@@ -145,9 +93,5 @@ For periodic meshes, triangles that cross the boundary are clipped to the
 primary cell. Vertices are returned in real-space coordinates, and faces are
 integer indices into that vertex array.
 
-The Wulff construction example applies this workflow to a nanoparticle:
-
-.. code-block:: bash
-
-   python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --output pt_surface.npz
-   python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --show
+See :doc:`examples` for finite Wulff and periodic Pt(211) distance-surface
+examples.

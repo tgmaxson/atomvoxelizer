@@ -43,27 +43,47 @@ field:
 Periodic scalar meshes are clipped at the primary cell boundary. This avoids
 wrapping a boundary-crossing triangle across the cell.
 
-The zeolite example in ``examples/zeolite/zeolite_voxel.py`` demonstrates
-reading CIF files with ASE, voxelizing covalent-radius shells and cores, and
-plotting slices and supercell scaling.
+Coordination-Surface Masks
+--------------------------
 
-The Wulff example in ``examples/wulff/distance_surface.py`` demonstrates a
-nearest-atom distance field around a nanoparticle and writes a marching-cubes
-surface mesh:
+One useful pattern is to build a shell around each atom, then carve the atomic
+cores back out. For example, a shell radius of ``1.4 * covalent_radius`` and a
+core radius of ``1.1 * covalent_radius`` gives a coordination-number-like
+surface mask that can be sampled randomly for workflows such as Monte Carlo
+trial moves.
 
-.. code-block:: bash
+.. code-block:: python
 
-   pip install -e ".[examples,analysis]"
-   python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --output pt_surface.npz
-   python examples/wulff/distance_surface.py --symbol Pt --size 147 --distance 2.0 --show
+   import numpy as np
+   from ase.data import covalent_radii
 
-The periodic surface example in ``examples/surfaces/pt211_distance_surface.py``
-uses the same distance-field workflow for a Pt(211) slab with periodic boundary
-conditions:
+   from atomvoxelizer import VoxelGrid
 
-.. code-block:: bash
+   grid = VoxelGrid(cell=atoms.cell.array, resolution=0.25)
+   centers = atoms.get_positions()
+   radii = np.array([covalent_radii[atom.number] for atom in atoms], dtype=float)
 
-   python examples/surfaces/pt211_distance_surface.py --distance 1.8 --show
+   grid.add_spheres(centers, 1.4 * radii, value=1.0)
+   grid.set_spheres(centers, 1.1 * radii, value=0.0)
+   grid.clamp_grid(0.0, 1.0)
+
+   samples = list(
+       grid.sample_voxels_in_range(
+           min_val=0.5,
+           max_val=1.0,
+           min_dist=2.0,
+           seed=123,
+       )
+   )
+
+The resulting grid is not a solvent- or adsorbate-accessible probe surface. It
+is a geometric shell useful for sampling surface-like positions near atoms.
+
+Examples
+--------
+
+See :doc:`examples` for complete zeolite, nanoparticle, and periodic surface
+workflows.
 
 Run tests and benchmarks with:
 

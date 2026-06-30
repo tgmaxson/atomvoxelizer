@@ -9,6 +9,7 @@ AtomVoxelizer builds periodic voxel grids around atomistic structures.
 
    install
    usage
+   examples
    algorithm
    backends
    analysis
