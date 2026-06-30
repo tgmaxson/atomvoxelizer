@@ -1,0 +1,11 @@
+image: python:3.11
+
+stages:
+  - test
+
+pytest:
+  stage: test
+  script:
+    - python -m pip install --upgrade pip
+    - pip install -e ".[dev]"
+    - pytest tests/
