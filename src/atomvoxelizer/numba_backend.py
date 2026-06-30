@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 import numpy as np
-from numba import njit
+
+try:
+    from numba import njit
+except ImportError as exc:  # pragma: no cover - depends on optional dependency
+    raise ImportError(
+        "VoxelGridNumba requires the optional dependency Numba. Install Numba directly, "
+        "for example with `pip install numba` or your environment manager of choice."
+    ) from exc
 
 from .voxelgrid import VoxelGrid, _cached_sphere_offsets
 

@@ -7,13 +7,14 @@ Install the package in editable mode while developing:
 
    pip install -e ".[dev,examples]"
 
-Install optional acceleration backends with:
+Install optional acceleration backends directly if you need them:
 
 .. code-block:: bash
 
-   pip install ".[numba]"
-   pip install ".[taichi]"
-   pip install ".[cupy]"
+   pip install numba
+   pip install taichi
+   # Choose the CuPy package matching your CUDA runtime, for example:
+   pip install cupy-cuda12x
 
 ``VoxelGrid`` is always the NumPy backend. Optional acceleration backends are
 explicit: ``VoxelGridNumba``, ``VoxelGridTaichi``, and ``VoxelGridCuPy``.

@@ -13,7 +13,8 @@ try:
     import cupy as cp
 except ImportError as exc:  # pragma: no cover - depends on optional dependency
     raise ImportError(
-        "VoxelGridCuPy requires CuPy. Install it with `pip install AtomVoxelizer[cupy]`."
+        "VoxelGridCuPy requires the optional dependency CuPy. Install the CuPy package "
+        "that matches your CUDA environment, for example `pip install cupy-cuda12x`."
     ) from exc
 
 

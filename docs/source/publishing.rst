@@ -43,11 +43,10 @@ When the TestPyPI package looks correct, upload to PyPI:
 
    twine upload dist/*
 
-Optional backends are published as extras:
+Backend packages are optional dependencies that users install directly:
 
 .. code-block:: bash
 
-   pip install "AtomVoxelizer[numba]"
-   pip install "AtomVoxelizer[taichi]"
-   pip install "AtomVoxelizer[cupy]"
-
+   pip install numba
+   pip install taichi
+   pip install cupy-cuda12x

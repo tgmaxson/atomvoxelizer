@@ -19,12 +19,12 @@ Numba
 -----
 
 ``VoxelGridNumba`` inherits from ``VoxelGrid`` and overrides the hot mutating
-sphere operations with Numba-compiled kernels. It is available when the
-``numba`` extra is installed:
+sphere operations with Numba-compiled kernels. It is available when Numba is
+installed in the environment:
 
 .. code-block:: bash
 
-   pip install ".[numba]"
+   pip install numba
 
 CuPy
 ----
@@ -34,11 +34,12 @@ and clamp operations with CuPy array operations. It inherits from the Numba
 backend when Numba is importable, otherwise from the NumPy backend. Use
 ``to_numpy`` to copy results back to host memory.
 
-The CuPy backend is optional:
+The CuPy backend is optional. Install the CuPy package that matches your CUDA
+runtime:
 
 .. code-block:: bash
 
-   pip install ".[cupy]"
+   pip install cupy-cuda12x
 
 GPU functionality is not exercised by the CPU-only test suite.
 
@@ -48,12 +49,11 @@ Taichi
 ``VoxelGridTaichi`` inherits from ``VoxelGrid`` and overrides mutating sphere
 operations with Taichi CPU kernels. ``VoxelGridTaichiGPU`` requests Taichi's GPU
 arch list and uses the same kernels on a visible GPU device. Both are available
-when the ``taichi`` extra is
-installed:
+when Taichi is installed in the environment:
 
 .. code-block:: bash
 
-   pip install ".[taichi]"
+   pip install taichi
 
 The benchmark backend names are ``taichi`` for CPU and ``taichi-gpu`` for GPU.
 Taichi has a process-global runtime: once a Python process initializes Taichi on

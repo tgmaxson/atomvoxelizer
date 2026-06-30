@@ -12,12 +12,13 @@ Install from this repository:
 pip install .
 ```
 
-Install optional acceleration backends with extras:
+Install optional acceleration backends directly if you need them:
 
 ```bash
-pip install ".[numba]"
-pip install ".[taichi]"
-pip install ".[cupy]"
+pip install numba
+pip install taichi
+# Choose the CuPy package matching your CUDA runtime, for example:
+pip install cupy-cuda12x
 pip install ".[analysis]"
 ```
 

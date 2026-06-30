@@ -14,7 +14,8 @@ try:
     import taichi as ti
 except ImportError as exc:  # pragma: no cover - depends on optional dependency
     raise ImportError(
-        "VoxelGridTaichi requires Taichi. Install it with `pip install AtomVoxelizer[taichi]`."
+        "VoxelGridTaichi requires the optional dependency Taichi. Install Taichi directly, "
+        "for example with `pip install taichi` or your environment manager of choice."
     ) from exc
 
 

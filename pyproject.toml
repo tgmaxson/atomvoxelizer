@@ -30,16 +30,6 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-numba = [
-    "numba",
-]
-cupy = [
-    "cupy",
-    "numba",
-]
-taichi = [
-    "taichi",
-]
 analysis = [
     "scikit-image",
 ]
@@ -52,17 +42,13 @@ docs = [
 ]
 dev = [
     "ase",
-    "numba",
     "pytest",
     "requests",
     "scikit-image",
     "sphinx",
-    "taichi",
 ]
 bench = [
     "ase",
-    "numba",
-    "taichi",
 ]
 publish = [
     "build",
