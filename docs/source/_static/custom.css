@@ -5,10 +5,16 @@ body {
 
 body {
     color: #24313b;
+    margin: 0;
+    padding: 0;
 }
 
 div.document {
     width: 100%;
+    margin: 0;
+}
+
+div.documentwrapper {
     margin: 0;
 }
 
@@ -75,14 +81,30 @@ div.body h3 {
     color: #1f3c53;
 }
 
+div.footer {
+    width: auto;
+    margin: 20px 32px 30px 312px;
+}
+
 table.docutils {
     width: 100%;
 }
 
 @media screen and (max-width: 875px) {
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
     div.document {
         width: 100%;
         margin: 0;
+    }
+
+    div.documentwrapper {
+        float: none;
+        margin: 0;
+        background: transparent;
     }
 
     div.bodywrapper {
@@ -92,7 +114,10 @@ table.docutils {
     div.sphinxsidebar {
         position: static;
         width: auto;
+        margin: 0;
         padding: 18px 22px;
+        color: #24313b;
+        background: #e5f0ec;
         border-right: 0;
         border-bottom: 1px solid #c8d8d2;
     }
@@ -109,8 +134,21 @@ table.docutils {
         width: 136px;
     }
 
+    div.sphinxsidebar h3,
+    div.sphinxsidebar h4,
+    div.sphinxsidebar p,
+    div.sphinxsidebar h3 a,
     div.sphinxsidebar h1.logo,
     div.sphinxsidebar h1.logo a {
+        color: #1e3f5f;
         white-space: normal;
+    }
+
+    div.sphinxsidebar a {
+        color: #285f7f;
+    }
+
+    div.footer {
+        display: none;
     }
 }
