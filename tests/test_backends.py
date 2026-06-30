@@ -44,6 +44,13 @@ def test_cupy_backend_matches_numpy_backend_when_installed():
     if importlib.util.find_spec("cupy") is None:
         pytest.skip("CuPy is not installed")
 
+    import cupy as cp
+
+    try:
+        cp.cuda.runtime.getDeviceCount()
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(f"CuPy is installed but no CUDA device is available: {exc}")
+
     from atomvoxelizer import VoxelGridCuPy
 
     cupy_grid = build_reference_grid(VoxelGridCuPy)

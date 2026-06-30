@@ -46,22 +46,26 @@ Taichi
 ------
 
 ``VoxelGridTaichi`` inherits from ``VoxelGrid`` and overrides mutating sphere
-operations with Taichi CPU kernels. It is available when the ``taichi`` extra is
+operations with Taichi CPU kernels. ``VoxelGridTaichiGPU`` requests Taichi's GPU
+arch list and uses the same kernels on a visible GPU device. Both are available
+when the ``taichi`` extra is
 installed:
 
 .. code-block:: bash
 
    pip install ".[taichi]"
 
-The current Taichi backend initializes Taichi with ``arch=ti.cpu`` so it can be
-tested consistently on machines without GPU access.
+The benchmark backend names are ``taichi`` for CPU and ``taichi-gpu`` for GPU.
+Taichi has a process-global runtime: once a Python process initializes Taichi on
+CPU, it cannot switch that same process to GPU. Run CPU and GPU Taichi
+benchmarks in separate commands if you need both.
 
 The current Taichi CPU backend is not expected to beat NumPy on every benchmark.
 It launches Taichi kernels for many small sphere operations and pays Taichi JIT
 and kernel-dispatch overhead. Numba batches equal-radius atoms into compiled
 loops, while the NumPy backend uses efficient indexed array updates. Taichi is
 included as an experimental backend and is a better target for future batched
-or GPU-oriented kernels than for the current small CPU workloads.
+or more aggressively batched kernels than for the current small CPU workloads.
 
 Consistency
 -----------
@@ -83,3 +87,9 @@ Run zeolite supercell scaling and save a plot:
 .. code-block:: bash
 
    python benchmarks/benchmark_backends.py --zeolite-scaling --framework BEA --resolution 0.5 --plot zeolite_scaling.png
+
+Run the Taichi GPU backend separately:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_backends.py --workload zeolite --backends taichi-gpu

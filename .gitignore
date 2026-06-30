@@ -11,3 +11,4 @@ dist-local-check/
 *.egg-info/
 
 docs/build/
+benchmarks/*.png

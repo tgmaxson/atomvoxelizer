@@ -26,6 +26,9 @@ def load_backend(name):
     if name == "taichi":
         module = importlib.import_module("atomvoxelizer.taichi_backend")
         return module.VoxelGridTaichi
+    if name in {"taichi-gpu", "taichi_gpu"}:
+        module = importlib.import_module("atomvoxelizer.taichi_backend")
+        return module.VoxelGridTaichiGPU
     if name == "cupy":
         module = importlib.import_module("atomvoxelizer.cupy_backend")
         return module.VoxelGridCuPy
@@ -116,7 +119,7 @@ def benchmark_workload(workload, backend_names, repeats):
         try:
             cls = load_backend(backend)
             times, grid = time_backend(cls, cell, workload["resolution"], centers, radii, repeats)
-        except ImportError as exc:
+        except Exception as exc:
             rows.append(
                 {
                     "workload": workload["name"],

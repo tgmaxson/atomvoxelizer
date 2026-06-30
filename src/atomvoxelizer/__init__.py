@@ -10,6 +10,7 @@ __all__ = [
     "VoxelGridNumPy",
     "VoxelGridNumba",
     "VoxelGridTaichi",
+    "VoxelGridTaichiGPU",
     "VoxelRegion",
 ]
 
@@ -27,4 +28,8 @@ def __getattr__(name):
         from .taichi_backend import VoxelGridTaichi
 
         return VoxelGridTaichi
+    if name == "VoxelGridTaichiGPU":
+        from .taichi_backend import VoxelGridTaichiGPU
+
+        return VoxelGridTaichiGPU
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

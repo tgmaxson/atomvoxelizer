@@ -18,17 +18,43 @@ except ImportError as exc:  # pragma: no cover - depends on optional dependency
     ) from exc
 
 
-def _init_taichi_cpu_once():
+def _arch_name(arch):
+    if isinstance(arch, (list, tuple)):
+        return "gpu"
+    return getattr(arch, "name", str(arch)).lower()
+
+
+def _current_arch():
     try:
         runtime = ti.lang.impl.get_runtime()
-        if runtime.prog is not None:
-            return
+        if runtime.prog is None:
+            return None
+        return ti.lang.impl.current_cfg().arch
     except Exception:
-        pass
-    ti.init(arch=ti.cpu, offline_cache=False)
+        return None
 
 
-_init_taichi_cpu_once()
+def _init_taichi_once(arch):
+    current_arch = _current_arch()
+    if current_arch is None:
+        ti.init(arch=arch, offline_cache=False, enable_fallback=False)
+        return
+
+    if isinstance(arch, (list, tuple)):
+        if current_arch not in arch:
+            raise RuntimeError(
+                "Taichi is already initialized with "
+                f"arch={_arch_name(current_arch)}; cannot create arch={_arch_name(arch)} grid "
+                "in the same Python process."
+            )
+        return
+
+    if current_arch != arch:
+        raise RuntimeError(
+            "Taichi is already initialized with "
+            f"arch={_arch_name(current_arch)}; cannot create arch={_arch_name(arch)} grid "
+            "in the same Python process."
+        )
 
 
 @ti.kernel
@@ -101,8 +127,11 @@ class VoxelGridTaichi(VoxelGrid):
     """Voxel grid with Taichi CPU kernels for mutating sphere operations."""
 
     backend_name = "taichi-cpu"
+    taichi_arch = ti.cpu
 
-    def __init__(self, cell, resolution=None, gpts=None):
+    def __init__(self, cell, resolution=None, gpts=None, arch=None):
+        self.taichi_arch = self.taichi_arch if arch is None else arch
+        _init_taichi_once(self.taichi_arch)
         super().__init__(cell=cell, resolution=resolution, gpts=gpts)
         self.grid = ti.field(dtype=ti.f32, shape=tuple(int(x) for x in self.gpts))
 
@@ -154,4 +183,15 @@ class VoxelGridTaichi(VoxelGrid):
         ti.sync()
 
 
-__all__ = ["VoxelGridTaichi"]
+class VoxelGridTaichiGPU(VoxelGridTaichi):
+    """Voxel grid with Taichi GPU kernels.
+
+    This class requests Taichi's GPU arch list. It requires a GPU-supported
+    Taichi installation and a visible GPU device.
+    """
+
+    backend_name = "taichi-gpu"
+    taichi_arch = ti.gpu
+
+
+__all__ = ["VoxelGridTaichi", "VoxelGridTaichiGPU"]
