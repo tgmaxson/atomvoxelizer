@@ -1,22 +1,78 @@
+html,
+body {
+    background: #f2f7f4;
+}
+
+body {
+    color: #24313b;
+}
+
 div.document {
-    width: min(1280px, 96vw);
+    width: 100%;
+    margin: 0;
 }
 
 div.sphinxsidebar {
-    width: 260px;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 280px;
+    box-sizing: border-box;
+    padding: 22px 24px;
+    overflow-y: auto;
+    background: #e5f0ec;
+    border-right: 1px solid #c8d8d2;
 }
 
 div.bodywrapper {
-    margin-left: 290px;
+    margin: 0 0 0 280px;
 }
 
 div.body {
     max-width: none;
+    min-height: 100vh;
+    padding: 40px 56px 64px;
+    background: #fbfdfc;
+    border-left: 0;
+}
+
+div.sphinxsidebarwrapper {
+    padding: 0;
+}
+
+div.sphinxsidebar p.logo {
+    margin: 0 0 14px;
+    text-align: left;
+}
+
+div.sphinxsidebar p.logo img.logo {
+    width: 168px;
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+div.sphinxsidebar h1.logo {
+    margin-top: 0;
 }
 
 div.sphinxsidebar h1.logo,
 div.sphinxsidebar h1.logo a {
+    color: #1e3f5f;
     white-space: nowrap;
+}
+
+div.sphinxsidebar a {
+    color: #285f7f;
+}
+
+div.sphinxsidebar a:hover,
+div.sphinxsidebar a.current {
+    color: #143a52;
+}
+
+div.body h1,
+div.body h2,
+div.body h3 {
+    color: #1f3c53;
 }
 
 table.docutils {
@@ -26,6 +82,7 @@ table.docutils {
 @media screen and (max-width: 875px) {
     div.document {
         width: 100%;
+        margin: 0;
     }
 
     div.bodywrapper {
@@ -33,7 +90,23 @@ table.docutils {
     }
 
     div.sphinxsidebar {
+        position: static;
         width: auto;
+        padding: 18px 22px;
+        border-right: 0;
+        border-bottom: 1px solid #c8d8d2;
+    }
+
+    div.body {
+        padding: 28px 22px 42px;
+    }
+
+    div.sphinxsidebar p.logo {
+        text-align: left;
+    }
+
+    div.sphinxsidebar p.logo img.logo {
+        width: 136px;
     }
 
     div.sphinxsidebar h1.logo,
