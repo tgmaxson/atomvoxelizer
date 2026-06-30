@@ -8,15 +8,26 @@ https://keepachangelog.com/en/1.1.0/
 ## [Unreleased]
 
 ### Added
-- Initial project structure.
-- Core voxelization functionality.
-- Documentation and examples.
+- None.
 
 ### Changed
 - None.
 
 ### Fixed
 - None.
+
+## [0.2.8] - 2026-06-30
+
+### Added
+- Added ``dtype`` support for voxel grids, including integer, floating, and
+  complex NumPy dtypes where backend support is available.
+- Added a dtype benchmark script for comparing grid storage types.
+- Documented dtype behavior and performance considerations.
+
+### Changed
+- Complex grids now support arithmetic sphere operations but reject ordered
+  operations such as ``min_sphere``, ``clamp_grid``, range sampling, and
+  threshold plotting.
 
 ## [0.2.7] - 2026-06-29
 

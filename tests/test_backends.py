@@ -40,6 +40,18 @@ def test_numba_backend_matches_numpy_backend_when_installed():
     np.testing.assert_allclose(build_reference_grid(VoxelGridNumba), build_reference_grid(VoxelGridNumPy))
 
 
+def test_numba_backend_preserves_selected_dtype_when_installed():
+    if importlib.util.find_spec("numba") is None:
+        pytest.skip("Numba is not installed")
+
+    from atomvoxelizer.numba_backend import VoxelGridNumba
+
+    grid = VoxelGridNumba(np.eye(3) * 4.0, gpts=(4, 4, 4), dtype=np.int32)
+    grid.add_sphere(np.array([1.5, 1.5, 1.5]), radius=0.1, value=3)
+    assert grid.grid.dtype == np.dtype(np.int32)
+    assert grid.grid[1, 1, 1] == 3
+
+
 def test_cupy_backend_matches_numpy_backend_when_installed():
     if importlib.util.find_spec("cupy") is None:
         pytest.skip("CuPy is not installed")

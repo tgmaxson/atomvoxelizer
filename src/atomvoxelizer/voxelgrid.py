@@ -62,9 +62,12 @@ class VoxelGrid:
 
     backend_name = "numpy"
 
-    def __init__(self, cell, resolution=None, gpts=None):
+    def __init__(self, cell, resolution=None, gpts=None, dtype=np.float32):
         self.cell = np.array(cell, dtype=np.float64)
         self.cell_inv = np.linalg.inv(self.cell)
+        self.dtype = np.dtype(dtype)
+        if self.dtype.kind not in "iufc":
+            raise TypeError("dtype must be a numeric NumPy dtype")
 
         if resolution is None and gpts is None:
             raise ValueError("Either resolution or gpts must be specified")
@@ -78,7 +81,7 @@ class VoxelGrid:
             self.gpts = np.array(gpts, dtype=int)
         self.resolution = lengths / self.gpts
 
-        self.grid = np.zeros(tuple(self.gpts), dtype=np.float32)
+        self.grid = np.zeros(tuple(self.gpts), dtype=self.dtype)
 
     def to_numpy(self):
         """Return the voxel values as a NumPy array."""
@@ -118,6 +121,10 @@ class VoxelGrid:
         if mask not in {"constant", "distance"}:
             raise ValueError("mask must be 'constant' or 'distance'")
 
+    def _check_ordered_grid(self, operation):
+        if np.issubdtype(self.dtype, np.complexfloating):
+            raise TypeError(f"{operation} is not supported for complex grid dtypes")
+
     def _sphere_indices_and_values(self, center, radius, value, mask):
         self._validate_mask(mask)
         center_idx = self._center_index(center)
@@ -146,6 +153,7 @@ class VoxelGrid:
         self.grid[indices] /= values
 
     def min_sphere(self, center, radius, value=1, mask="distance"):
+        self._check_ordered_grid("min_sphere")
         indices, values = self._sphere_indices_and_values(center, radius, value, mask)
         np.minimum.at(self.grid, indices, values)
 
@@ -185,11 +193,13 @@ class VoxelGrid:
             self.div_sphere(center, radius, factor=factor, mask=mask)
 
     def min_spheres(self, centers, radii, value=1, mask="distance"):
+        self._check_ordered_grid("min_spheres")
         centers, radii = self._validate_spheres(centers, radii)
         for center, radius in zip(centers, radii):
             self.min_sphere(center, radius, value=value, mask=mask)
 
     def clamp_grid(self, min_val=0.0, max_val=1.0):
+        self._check_ordered_grid("clamp_grid")
         np.clip(self.grid, min_val, max_val, out=self.grid)
 
     def sample_voxels_in_range(self, min_val=0.0, max_val=1.0, min_dist=0.0, return_indices=False, seed=None):
@@ -199,6 +209,7 @@ class VoxelGrid:
         When returning real-space positions, ``min_dist`` enforces a minimum
         Euclidean separation in Angstrom between yielded samples.
         """
+        self._check_ordered_grid("sample_voxels_in_range")
         rng = np.random.default_rng(seed)
         grid = self.to_numpy()
         mask = (grid >= min_val) & (grid <= max_val)
@@ -225,6 +236,7 @@ class VoxelGrid:
 
     def plot_3D(self, threshold=0.1, s=5, draw_cell=True):
         """Plot voxels with values above ``threshold`` in real space."""
+        self._check_ordered_grid("plot_3D")
         import matplotlib.pyplot as plt
 
         nx, ny, nz = self.gpts

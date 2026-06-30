@@ -102,6 +102,13 @@ Run the backend benchmark with:
    python benchmarks/benchmark_backends.py --zeolite-scaling --framework BEA \
        --resolution 0.5 --plot zeolite_scaling.png
 
+Run the dtype benchmark to compare grid storage types:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_dtypes.py --backend numpy
+   python benchmarks/benchmark_dtypes.py --backend numba
+
 .. image:: _static/zeolite_scaling.png
    :alt: BEA zeolite backend scaling benchmark
    :width: 90%

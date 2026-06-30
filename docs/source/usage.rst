@@ -16,6 +16,26 @@ Create a voxel grid from a periodic cell:
    grid = VoxelGrid(cell=cell, resolution=0.25)
    grid.add_sphere(center=np.array([5.0, 5.0, 5.0]), radius=1.0, value=1.0)
 
+Grid Dtype
+----------
+
+``VoxelGrid`` uses ``numpy.float32`` values by default. Pass ``dtype`` when a
+different grid storage type is useful:
+
+.. code-block:: python
+
+   occupancy = VoxelGrid(cell=cell, resolution=0.25, dtype=np.int16)
+   distance = VoxelGrid(cell=cell, resolution=0.25, dtype=np.float64)
+   amplitudes = VoxelGrid(cell=cell, resolution=0.25, dtype=np.complex64)
+
+Integer dtypes are useful for count-like masks such as coordination-shell
+overlap fields. Floating dtypes are better for distance fields and analysis
+workflows. Complex dtypes support arithmetic operations such as ``set_sphere``,
+``add_sphere``, ``mul_sphere``, and ``div_sphere``. Ordered operations are not
+defined for complex values, so ``min_sphere``, ``clamp_grid``,
+``sample_voxels_in_range``, and threshold plotting raise ``TypeError`` for
+complex grids.
+
 Sphere Masks
 ------------
 
@@ -93,4 +113,5 @@ Run tests and benchmarks with:
 
    pytest
    python benchmarks/benchmark_backends.py --backends numpy numba taichi cupy
+   python benchmarks/benchmark_dtypes.py --backend numpy
    python benchmarks/benchmark_structures.py

@@ -51,6 +51,11 @@ grid.set_sphere(center=np.array([2.0, 2.0, 2.0]), radius=0.5, value=-1.0)
 grid.clamp_grid(min_val=-1.0, max_val=1.0)
 ```
 
+Use `dtype=` to choose the grid storage dtype when needed. The default is
+`np.float32`; integer dtypes are useful for count-like masks, and complex dtypes
+support arithmetic sphere operations but not ordered operations such as
+`min_sphere`, `clamp_grid`, or value-range sampling.
+
 Sphere operations accept two masks. `mask="constant"` writes the supplied value
 or factor across the sphere. `mask="distance"` writes the real-space distance
 from the sphere center at each voxel. Combining a distance mask with
@@ -132,6 +137,7 @@ Run the backend benchmark with:
 python benchmarks/benchmark_backends.py --backends numpy numba taichi cupy
 python benchmarks/benchmark_backends.py --zeolite-scaling --framework BEA --resolution 0.5 --plot zeolite_scaling.png
 python benchmarks/benchmark_backends.py --workload zeolite --backends taichi-gpu
+python benchmarks/benchmark_dtypes.py --backend numpy
 ```
 
 Run the built-in structure benchmarks for a zeolite and a roughly 1000 atom Wulff

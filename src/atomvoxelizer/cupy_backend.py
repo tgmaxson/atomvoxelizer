@@ -30,8 +30,8 @@ class VoxelGridCuPy(_BaseVoxelGrid):
     def backend_name(self):
         return "cupy"
 
-    def __init__(self, cell, resolution=None, gpts=None):
-        super().__init__(cell=cell, resolution=resolution, gpts=gpts)
+    def __init__(self, cell, resolution=None, gpts=None, dtype=np.float32):
+        super().__init__(cell=cell, resolution=resolution, gpts=gpts, dtype=dtype)
         self.grid = cp.asarray(self.grid)
 
     def to_numpy(self):
@@ -76,6 +76,7 @@ class VoxelGridCuPy(_BaseVoxelGrid):
         self.grid[indices] /= values
 
     def min_sphere(self, center, radius, value=1, mask="distance"):
+        self._check_ordered_grid("min_sphere")
         indices, values = self._sphere_indices_and_values(center, radius, value, mask)
         cp.minimum.at(self.grid, indices, values)
 
@@ -100,11 +101,13 @@ class VoxelGridCuPy(_BaseVoxelGrid):
             self.div_sphere(center, float(radius), factor=factor, mask=mask)
 
     def min_spheres(self, centers, radii, value=1, mask="distance"):
+        self._check_ordered_grid("min_spheres")
         centers, radii = self._validate_spheres(centers, radii)
         for center, radius in zip(centers, radii):
             self.min_sphere(center, float(radius), value=value, mask=mask)
 
     def clamp_grid(self, min_val=0.0, max_val=1.0):
+        self._check_ordered_grid("clamp_grid")
         self.grid = cp.clip(self.grid, min_val, max_val)
 
     def synchronize(self):

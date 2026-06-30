@@ -295,6 +295,7 @@ class VoxelGridNumba(VoxelGrid):
             _div_sphere_distance_offsets_flat(grid, center_idx, offsets, distances, factor, nx, ny, nz)
 
     def min_sphere(self, center, radius, value=1, mask="distance"):
+        self._check_ordered_grid("min_sphere")
         center_idx = self._center_index(center)
         offsets, distances = self._offsets_for_mask(radius, mask)
         grid, nx, ny, nz = self._flat_grid_and_shape()
@@ -361,6 +362,7 @@ class VoxelGridNumba(VoxelGrid):
                 _div_many_sphere_distance_offsets_flat(grid, subset, offsets, distances, factor, nx, ny, nz)
 
     def min_spheres(self, centers, radii, value=1, mask="distance"):
+        self._check_ordered_grid("min_spheres")
         centers, radii = self._validate_spheres(centers, radii)
         self._validate_mask(mask)
         center_indices = self.positions_to_indices(centers)
@@ -374,6 +376,7 @@ class VoxelGridNumba(VoxelGrid):
                 _min_many_sphere_distance_offsets_flat(grid, subset, offsets, distances, value, nx, ny, nz)
 
     def clamp_grid(self, min_val=0.0, max_val=1.0):
+        self._check_ordered_grid("clamp_grid")
         np.clip(self.grid, min_val, max_val, out=self.grid)
 
 

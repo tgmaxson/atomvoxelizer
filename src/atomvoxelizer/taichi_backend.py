@@ -58,6 +58,33 @@ def _init_taichi_once(arch):
         )
 
 
+def _taichi_dtype(dtype):
+    dtype = np.dtype(dtype)
+    if dtype == np.dtype(np.float32):
+        return ti.f32
+    if dtype == np.dtype(np.float64):
+        return ti.f64
+    if dtype == np.dtype(np.int8):
+        return ti.i8
+    if dtype == np.dtype(np.int16):
+        return ti.i16
+    if dtype == np.dtype(np.int32):
+        return ti.i32
+    if dtype == np.dtype(np.int64):
+        return ti.i64
+    if dtype == np.dtype(np.uint8):
+        return ti.u8
+    if dtype == np.dtype(np.uint16):
+        return ti.u16
+    if dtype == np.dtype(np.uint32):
+        return ti.u32
+    if dtype == np.dtype(np.uint64):
+        return ti.u64
+    if np.issubdtype(dtype, np.complexfloating):
+        raise TypeError("Taichi backend does not support complex grid dtypes")
+    raise TypeError(f"Taichi backend does not support dtype {dtype}")
+
+
 @ti.kernel
 def _set_sphere_offsets(
     grid: ti.template(),
@@ -222,11 +249,11 @@ class VoxelGridTaichi(VoxelGrid):
     backend_name = "taichi-cpu"
     taichi_arch = ti.cpu
 
-    def __init__(self, cell, resolution=None, gpts=None, arch=None):
+    def __init__(self, cell, resolution=None, gpts=None, arch=None, dtype=np.float32):
         self.taichi_arch = self.taichi_arch if arch is None else arch
         _init_taichi_once(self.taichi_arch)
-        super().__init__(cell=cell, resolution=resolution, gpts=gpts)
-        self.grid = ti.field(dtype=ti.f32, shape=tuple(int(x) for x in self.gpts))
+        super().__init__(cell=cell, resolution=resolution, gpts=gpts, dtype=dtype)
+        self.grid = ti.field(dtype=_taichi_dtype(self.dtype), shape=tuple(int(x) for x in self.gpts))
 
     def to_numpy(self):
         """Return the voxel values as a NumPy array."""
@@ -271,6 +298,7 @@ class VoxelGridTaichi(VoxelGrid):
             _div_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(factor))
 
     def min_sphere(self, center, radius, value=1, mask="distance"):
+        self._check_ordered_grid("min_sphere")
         center_idx = self._center_index(center)
         offsets, distances = self._offsets_for_mask(radius, mask)
         if mask == "constant":
@@ -332,6 +360,7 @@ class VoxelGridTaichi(VoxelGrid):
                     _div_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(factor))
 
     def min_spheres(self, centers, radii, value=1, mask="distance"):
+        self._check_ordered_grid("min_spheres")
         centers, radii = self._validate_spheres(centers, radii)
         self._validate_mask(mask)
         center_indices = self.positions_to_indices(centers)
@@ -344,6 +373,7 @@ class VoxelGridTaichi(VoxelGrid):
                     _min_sphere_distance_offsets(self.grid, center_idx, offsets, distances, float(value))
 
     def clamp_grid(self, min_val=0.0, max_val=1.0):
+        self._check_ordered_grid("clamp_grid")
         _clamp_grid(self.grid, float(min_val), float(max_val))
 
     def synchronize(self):

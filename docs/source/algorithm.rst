@@ -9,10 +9,12 @@ spherical regions into that grid.
 Grid Construction
 -----------------
 
-``VoxelGrid`` stores the cell matrix, its inverse, the grid shape, and a
-``float32`` array of voxel values. Positions are converted to fractional
-coordinates with the inverse cell, wrapped into the primary periodic image, and
-then mapped to integer voxel indices.
+``VoxelGrid`` stores the cell matrix, its inverse, the grid shape, and a NumPy
+array of voxel values. The default value dtype is ``float32``. A different
+numeric dtype can be selected with ``dtype=...`` when constructing the grid.
+Positions are converted to fractional coordinates with the inverse cell,
+wrapped into the primary periodic image, and then mapped to integer voxel
+indices.
 
 Sphere operations are implemented from cached integer offsets:
 
@@ -90,6 +92,90 @@ current implementation is experimental. It pays noticeable JIT and kernel
 dispatch overhead for many small sphere operations, so the CPU Taichi backend is
 not expected to outperform NumPy or Numba for the current small sphere-update
 workloads.
+
+Dtype Performance
+-----------------
+
+The default ``float32`` grid is a practical balance between memory use and
+speed. Integer dtypes can reduce memory for count-like grids, while ``float64``
+and complex dtypes increase memory traffic. The impact depends on backend,
+hardware, grid size, and operation mix; measure on the target workload before
+changing the default.
+
+Run the dtype benchmark with:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_dtypes.py --backend numpy
+   python benchmarks/benchmark_dtypes.py --backend numba
+
+Example results on an AMD EPYC 7551P 32-core CPU, Python 3.12.12, NumPy 2.4.1,
+using ``--resolution 0.5 --repeats 2`` for the BEA zeolite workload:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Backend
+     - Dtype
+     - Grid MiB
+     - Best time [s]
+   * - NumPy
+     - ``int16``
+     - 0.07
+     - 0.0139
+   * - NumPy
+     - ``int32``
+     - 0.14
+     - 0.0145
+   * - NumPy
+     - ``float32``
+     - 0.14
+     - 0.0147
+   * - NumPy
+     - ``float64``
+     - 0.27
+     - 0.0137
+   * - NumPy
+     - ``complex64``
+     - 0.27
+     - 0.0138
+   * - NumPy
+     - ``complex128``
+     - 0.55
+     - 0.0140
+   * - Numba
+     - ``int16``
+     - 0.07
+     - 0.0005
+   * - Numba
+     - ``int32``
+     - 0.14
+     - 0.0004
+   * - Numba
+     - ``float32``
+     - 0.14
+     - 0.0009
+   * - Numba
+     - ``float64``
+     - 0.27
+     - 0.0005
+   * - Numba
+     - ``complex64``
+     - 0.27
+     - 0.0005
+   * - Numba
+     - ``complex128``
+     - 0.55
+     - 0.0007
+
+For this small workload, dtype had little effect on NumPy wall time and the
+memory footprint changed predictably with item size. Larger grids and
+memory-bound workloads may show stronger dtype effects.
+
+Complex grids are supported for arithmetic sphere operations. Ordered
+operations such as ``min_sphere``, ``clamp_grid``, value-range sampling, and
+threshold plotting are intentionally not supported for complex dtypes because
+complex numbers have no natural ordering.
 
 Optional Packages
 -----------------
