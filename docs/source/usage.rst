@@ -46,11 +46,12 @@ wrapping a boundary-crossing triangle across the cell.
 Coordination-Surface Masks
 --------------------------
 
-One useful pattern is to build a shell around each atom, then carve the atomic
-cores back out. For example, a shell radius of ``1.4 * covalent_radius`` and a
-core radius of ``1.1 * covalent_radius`` gives a coordination-number-like
-surface mask that can be sampled randomly for workflows such as Monte Carlo
-trial moves.
+One useful pattern is to add overlapping shells around atoms, then carve the
+atomic cores back out. For example, a shell radius of
+``1.4 * covalent_radius`` and a core radius of ``1.1 * covalent_radius`` gives
+a coordination-number-like surface field. The voxel value is the number of
+shells covering that point, so values near 3 mark positions coordinated by
+roughly three nearby atoms.
 
 .. code-block:: python
 
@@ -65,19 +66,20 @@ trial moves.
 
    grid.add_spheres(centers, 1.4 * radii, value=1.0)
    grid.set_spheres(centers, 1.1 * radii, value=0.0)
-   grid.clamp_grid(0.0, 1.0)
 
    samples = list(
        grid.sample_voxels_in_range(
-           min_val=0.5,
-           max_val=1.0,
+           min_val=2.5,
+           max_val=3.5,
            min_dist=2.0,
            seed=123,
        )
    )
 
 The resulting grid is not a solvent- or adsorbate-accessible probe surface. It
-is a geometric shell for sampling surface-like positions near atoms.
+is a geometric shell-overlap field for sampling surface-like positions near
+atoms. Sampling from ``2.5`` to ``3.5`` selects the coordination-3 surface while
+avoiding exact integer boundary issues.
 
 Examples
 --------
