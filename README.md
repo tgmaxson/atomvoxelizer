@@ -6,10 +6,18 @@ helpers for adding, setting, scaling, sampling, and plotting spherical regions.
 
 ## Installation
 
-Install from this repository:
+Install the released package from PyPI:
 
 ```bash
-pip install .
+pip install AtomVoxelizer
+```
+
+Install from the GitLab repository for development:
+
+```bash
+git clone https://gitlab.com/tgmaxson/atomvoxelizer.git
+cd atomvoxelizer
+pip install -e ".[dev,examples]"
 ```
 
 Install optional acceleration backends directly if you need them:
@@ -24,14 +32,9 @@ pip install ".[analysis]"
 
 `VoxelGrid` is always the NumPy backend. Optional acceleration backends are
 explicit: `VoxelGridNumba`, `VoxelGridTaichi`, and `VoxelGridCuPy`.
-`VoxelGridAnalysis` provides connected-volume and marching-cubes surface-area
-analysis when the `analysis` extra is installed.
-
-For development, examples, tests, and documentation:
-
-```bash
-pip install -e ".[dev,examples]"
-```
+`VoxelGridAnalysis` uses scikit-image for connected-volume and marching-cubes
+analysis when the `analysis` extra is installed. The examples extra installs
+ASE for CIF loading and Wulff construction examples.
 
 ## Basic Usage
 

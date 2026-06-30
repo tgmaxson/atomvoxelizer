@@ -67,12 +67,6 @@ loops, while the NumPy backend uses efficient indexed array updates. Taichi is
 included as an experimental backend and is a better target for future batched
 or more aggressively batched kernels than for the current small CPU workloads.
 
-Consistency
------------
-
-The tests compare NumPy, Numba, and Taichi CPU results on the same deterministic
-workload. CuPy tests are included but skipped when CuPy is not installed.
-
 Benchmarking
 ------------
 

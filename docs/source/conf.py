@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 project = "AtomVoxelizer"
 author = "AtomVoxelizer contributors"
-release = "0.1.0"
+release = "0.2.1"
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -20,5 +20,10 @@ exclude_patterns: list[str] = []
 
 html_theme = "alabaster"
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+html_theme_options = {
+    "page_width": "1280px",
+    "sidebar_width": "260px",
+}
 
 autodoc_typehints = "description"

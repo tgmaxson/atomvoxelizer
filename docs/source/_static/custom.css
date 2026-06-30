@@ -1,0 +1,43 @@
+div.document {
+    width: min(1280px, 96vw);
+}
+
+div.sphinxsidebar {
+    width: 260px;
+}
+
+div.bodywrapper {
+    margin-left: 290px;
+}
+
+div.body {
+    max-width: none;
+}
+
+div.sphinxsidebar h1.logo,
+div.sphinxsidebar h1.logo a {
+    white-space: nowrap;
+}
+
+table.docutils {
+    width: 100%;
+}
+
+@media screen and (max-width: 875px) {
+    div.document {
+        width: 100%;
+    }
+
+    div.bodywrapper {
+        margin-left: 0;
+    }
+
+    div.sphinxsidebar {
+        width: auto;
+    }
+
+    div.sphinxsidebar h1.logo,
+    div.sphinxsidebar h1.logo a {
+        white-space: normal;
+    }
+}
