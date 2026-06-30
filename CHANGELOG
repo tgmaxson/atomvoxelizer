@@ -1,0 +1,25 @@
+# Changelog
+
+All notable changes to this project will be documented in this file when possible.
+
+The format is based on Keep a Changelog:
+https://keepachangelog.com/en/1.1.0/
+
+## [Unreleased]
+
+### Added
+- Initial project structure.
+- Core voxelization functionality.
+- Documentation and examples.
+
+### Changed
+- None.
+
+### Fixed
+- None.
+
+## [0.2.7] - 2026-06-29
+
+### Added
+- First public release in a documentation ready state
+- Taichi, CuPy, and Numba accelerators implemented
