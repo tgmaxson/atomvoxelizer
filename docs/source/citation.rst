@@ -19,10 +19,11 @@ Known publications using this method or the predecessor voxel-grid workflow:
      - Link
      - Notes
    * - Maxson, Tristan, and Tibor Szilvási. "Metal-Support Interactions Reshape
-       Nanoparticle Catalyst Surfaces." ``Angewandte Chemie Novit`` 1, no. 1
+       Nanoparticle Catalyst Surfaces." *Angewandte Chemie Novit* 1, no. 1
        (2025): e70008.
      - https://doi.org/10.1002/anov.70008
-     - Uses the voxel-grid method for nanoparticle catalyst surface analysis.
+     - Uses the voxel-grid method to generate MCMD trial moves near nanoparticle
+       catalyst surfaces.
 
 Recommended entry format:
 

@@ -24,8 +24,8 @@ The constant mask writes the supplied value or factor across every voxel in the
 sphere. The distance mask writes the real-space distance from the sphere center
 at each voxel, in Angstrom when the cell is in Angstrom.
 
-Use ``min_spheres`` with the distance mask to compute a nearest-atom distance
-field:
+Use ``min_spheres`` with the distance mask to compute the distance to the
+nearest atom within a cutoff:
 
 .. code-block:: python
 
@@ -77,7 +77,7 @@ trial moves.
    )
 
 The resulting grid is not a solvent- or adsorbate-accessible probe surface. It
-is a geometric shell useful for sampling surface-like positions near atoms.
+is a geometric shell for sampling surface-like positions near atoms.
 
 Examples
 --------

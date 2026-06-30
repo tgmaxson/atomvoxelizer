@@ -13,7 +13,7 @@ NumPy
 dependencies and is the reference implementation for backend behavior.
 
 ``VoxelGridNumPy`` is kept as an alias for ``VoxelGrid`` for callers that want
-to be explicit in benchmarks or tests.
+to be explicit in benchmarks or scripts.
 
 Numba
 -----

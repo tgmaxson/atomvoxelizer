@@ -6,13 +6,13 @@ helpers for adding, setting, scaling, sampling, and plotting spherical regions.
 
 ## Installation
 
-Install the released package from PyPI:
+Install the latest released package from PyPI:
 
 ```bash
 pip install AtomVoxelizer
 ```
 
-Install from the GitLab repository for development:
+Install from the GitLab repository for development or unreleased changes:
 
 ```bash
 git clone https://gitlab.com/tgmaxson/atomvoxelizer.git

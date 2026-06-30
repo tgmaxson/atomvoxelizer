@@ -4,7 +4,7 @@ Installation
 Install From PyPI
 -----------------
 
-For normal use, install the released package from PyPI:
+For normal use, install the latest released package from PyPI:
 
 .. code-block:: bash
 
@@ -31,8 +31,8 @@ backends are optional packages installed directly when needed:
 Install From Source
 -------------------
 
-Use the GitLab repository for development, local documentation builds, or when
-you need changes that have not been released to PyPI yet:
+Use the GitLab repository for development, local documentation builds, or
+unreleased changes:
 
 .. code-block:: bash
 
@@ -44,8 +44,8 @@ The canonical source repository is:
 
    https://gitlab.com/tgmaxson/atomvoxelizer
 
-Common Development Commands
----------------------------
+Development Commands
+--------------------
 
 Run the tests:
 
