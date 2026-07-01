@@ -91,6 +91,21 @@ workflow to a periodic stepped Pt(211) slab:
    :alt: Periodic Pt(211) nearest-atom distance isosurface
    :width: 85%
 
+Voxel-Guided MC Trial Moves
+---------------------------
+
+``examples/mcmd/orb_v3_wulff_mc.py`` builds a Wulff nanoparticle with WulffPack,
+constructs a coordination-surface voxel mask, samples surface trial sites, and
+runs a minimal Monte Carlo loop. The default score is geometric so the example
+can run without ORB model weights; pass ``--score orb-v3`` after installing ORB
+to use the optional ORB-V3 scoring hook.
+
+.. code-block:: bash
+
+   python examples/mcmd/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 --steps 50
+
+The step-by-step explanation is in :doc:`quickstart`.
+
 Benchmarks
 ----------
 
