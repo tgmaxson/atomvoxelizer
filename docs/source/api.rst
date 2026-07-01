@@ -11,6 +11,22 @@ API Reference
    :undoc-members:
    :show-inheritance:
 
+Experimental Field Grids
+------------------------
+
+These NumPy-only classes are experimental and live on the vector-field
+development branch.
+
+.. autoclass:: atomvoxelizer.FieldVoxelGrid
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: atomvoxelizer.VectorVoxelGrid
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Optional Backends
 -----------------
 

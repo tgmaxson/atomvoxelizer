@@ -1,6 +1,7 @@
 """AtomVoxelizer public API."""
 
 from .voxelgrid import VoxelGrid, VoxelGridNumPy
+from .vectorgrid import FieldVoxelGrid, FieldVoxelGridNumPy, VectorVoxelGrid, VectorVoxelGridNumPy
 from .analysis import VoxelGridAnalysis, VoxelRegion
 
 __all__ = [
@@ -12,10 +13,23 @@ __all__ = [
     "VoxelGridTaichi",
     "VoxelGridTaichiGPU",
     "VoxelRegion",
+    "FieldVoxelGrid",
+    "FieldVoxelGridNumPy",
+    "VectorVoxelGrid",
+    "VectorVoxelGridNumPy",
 ]
 
 
 def __getattr__(name):
+    if name in {
+        "FieldVoxelGridCuPy",
+        "FieldVoxelGridTaichi",
+        "FieldVoxelGridTaichiGPU",
+        "VectorVoxelGridCuPy",
+        "VectorVoxelGridTaichi",
+        "VectorVoxelGridTaichiGPU",
+    }:
+        raise NotImplementedError(f"{name} is not implemented on the field-grid development branch")
     if name == "VoxelGridCuPy":
         from .cupy_backend import VoxelGridCuPy
 

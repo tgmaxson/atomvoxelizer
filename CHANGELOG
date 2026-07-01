@@ -8,7 +8,11 @@ https://keepachangelog.com/en/1.1.0/
 ## [Unreleased]
 
 ### Added
-- None.
+- Added an experimental NumPy-only ``FieldVoxelGrid`` prototype for scalar,
+  vector, and matrix-valued voxel fields.
+- Added ``VectorVoxelGrid`` as a convenience field grid for three-component
+  vector fields, including atom-normal sphere masks and Matplotlib quiver
+  plotting helpers.
 
 ### Changed
 - None.
