@@ -9,8 +9,8 @@ import numpy as np
 from atomvoxelizer import VoxelGrid
 
 
-def build_wulff_nanoparticle(symbol="Pt", natoms=201, lattice_constant=3.92):
-    """Build a finite fcc Wulff particle with WulffPack."""
+def build_wulff_nanoparticle(symbol="Pt", natoms=201, lattice_constant=3.92, shape="cube"):
+    """Build a finite fcc WulffPack particle."""
     try:
         from ase.build import bulk
         from wulffpack import SingleCrystal
@@ -21,11 +21,16 @@ def build_wulff_nanoparticle(symbol="Pt", natoms=201, lattice_constant=3.92):
         ) from exc
 
     primitive = bulk(symbol, "fcc", a=lattice_constant)
-    surface_energies = {
-        (1, 1, 1): 1.00,
-        (1, 0, 0): 1.12,
-        (1, 1, 0): 1.25,
-    }
+    if shape == "cube":
+        surface_energies = {(1, 0, 0): 1.0}
+    elif shape == "wulff":
+        surface_energies = {
+            (1, 1, 1): 1.00,
+            (1, 0, 0): 1.12,
+            (1, 1, 0): 1.25,
+        }
+    else:
+        raise ValueError("shape must be 'cube' or 'wulff'")
     return SingleCrystal(surface_energies, primitive_structure=primitive, natoms=natoms).atoms
 
 
@@ -82,15 +87,29 @@ def outer_atom_indices(atoms, fraction=0.35):
     return np.flatnonzero(distances >= cutoff)
 
 
-def geometric_score(atoms):
-    """Cheap placeholder score for the tutorial dry run.
-
-    ORB-V3 should be used for a physical MC run. This score only keeps the
-    example deterministic and runnable without downloading model weights.
-    """
+def radial_variance(atoms):
+    """Return the variance of atom distances from the nanoparticle center."""
     center = atoms.positions.mean(axis=0)
     distances = np.linalg.norm(atoms.positions - center, axis=1)
     return float(np.var(distances))
+
+
+def make_geometric_score(reference_positions, displacement_weight=1.0):
+    """Create a cheap sphere-forming placeholder score for the tutorial dry run.
+
+    ORB-V3 should be used for a physical MC run. This score only keeps the
+    example deterministic and runnable without downloading model weights. It
+    rewards a narrower radial distribution while penalizing excessive
+    displacement away from the starting lattice.
+    """
+    reference_positions = np.asarray(reference_positions, dtype=float).copy()
+
+    def score(atoms):
+        displacement = atoms.positions - reference_positions
+        displacement_penalty = float(np.sum(displacement * displacement))
+        return radial_variance(atoms) + displacement_weight * displacement_penalty
+
+    return score
 
 
 def make_orb_v3_score(device="cpu"):
@@ -130,15 +149,17 @@ def make_orb_v3_score(device="cpu"):
     return score
 
 
-def run_minimal_mc(atoms, trial_sites, steps=50, temperature=600.0, max_displacement=0.35, seed=11, score_fn=None):
+def run_minimal_mc(atoms, trial_sites, steps=50, temperature=0.05, max_displacement=0.35, seed=11, score_fn=None):
     """Run a tiny Metropolis loop using voxel-sampled trial directions."""
     rng = np.random.default_rng(seed)
-    score_fn = geometric_score if score_fn is None else score_fn
+    score_fn = make_geometric_score(atoms.positions) if score_fn is None else score_fn
     movable = outer_atom_indices(atoms)
     current_score = score_fn(atoms)
     accepted = 0
     trajectory = []
-    beta = 1.0 / max(temperature, 1.0)
+    if temperature <= 0.0:
+        raise ValueError("temperature must be positive")
+    beta = 1.0 / temperature
 
     for step in range(steps):
         atom_index = int(rng.choice(movable))
@@ -159,7 +180,7 @@ def run_minimal_mc(atoms, trial_sites, steps=50, temperature=600.0, max_displace
         else:
             atoms.positions[atom_index] = old_position
 
-        trajectory.append((step, atom_index, current_score, accepted / (step + 1)))
+        trajectory.append((step, atom_index, current_score, accepted / (step + 1), float(accept)))
 
     return np.array(trajectory, dtype=float)
 
@@ -186,25 +207,48 @@ def main():
     parser = argparse.ArgumentParser(description="Voxel-guided MC trial moves for a Wulff nanoparticle.")
     parser.add_argument("--symbol", default="Pt")
     parser.add_argument("--natoms", type=int, default=201)
+    parser.add_argument("--shape", choices=("cube", "wulff"), default="cube")
     parser.add_argument("--resolution", type=float, default=0.35)
     parser.add_argument("--steps", type=int, default=50)
+    parser.add_argument("--temperature", type=float, default=0.05)
+    parser.add_argument("--max-displacement", type=float, default=0.35)
     parser.add_argument("--seed", type=int, default=11)
     parser.add_argument("--score", choices=("geometric", "orb-v3"), default="geometric")
+    parser.add_argument("--displacement-weight", type=float, default=1.0)
     parser.add_argument("--device", default="cpu", help="Device passed to ORB-V3 when --score orb-v3 is used.")
     parser.add_argument("--plot", default=None, help="Optional path for a 3D plot of atoms and trial sites.")
     args = parser.parse_args()
 
-    atoms = put_cluster_in_voxel_cell(build_wulff_nanoparticle(args.symbol, args.natoms))
+    atoms = put_cluster_in_voxel_cell(build_wulff_nanoparticle(args.symbol, args.natoms, shape=args.shape))
+    initial_positions = atoms.positions.copy()
+    initial_radial_variance = radial_variance(atoms)
     grid = build_coordination_surface_grid(atoms, resolution=args.resolution)
     trial_sites = sample_surface_trial_sites(grid, seed=args.seed)
-    score_fn = make_orb_v3_score(args.device) if args.score == "orb-v3" else geometric_score
-    trajectory = run_minimal_mc(atoms, trial_sites, steps=args.steps, seed=args.seed, score_fn=score_fn)
+    if args.score == "orb-v3":
+        score_fn = make_orb_v3_score(args.device)
+    else:
+        score_fn = make_geometric_score(initial_positions, displacement_weight=args.displacement_weight)
+    trajectory = run_minimal_mc(
+        atoms,
+        trial_sites,
+        steps=args.steps,
+        temperature=args.temperature,
+        max_displacement=args.max_displacement,
+        seed=args.seed,
+        score_fn=score_fn,
+    )
+    displacements = np.linalg.norm(atoms.positions - initial_positions, axis=1)
 
     print(f"atoms: {len(atoms)}")
     print(f"grid points: {tuple(int(x) for x in grid.gpts)}")
     print(f"trial sites: {len(trial_sites)}")
+    print(f"accepted moves: {int(trajectory[:, 4].sum())}/{len(trajectory)}")
+    print(f"initial radial variance: {initial_radial_variance:.6f}")
+    print(f"final radial variance: {radial_variance(atoms):.6f}")
     print(f"final score: {trajectory[-1, 2]:.6f}")
     print(f"acceptance ratio: {trajectory[-1, 3]:.3f}")
+    print(f"mean displacement: {displacements.mean():.4f} A")
+    print(f"max displacement: {displacements.max():.4f} A")
     if args.plot:
         print(f"plot: {plot_trial_sites(atoms, trial_sites, args.plot)}")
 

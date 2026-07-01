@@ -1,11 +1,12 @@
 Quickstart Tutorial
 ===================
 
-This tutorial builds a small Wulff nanoparticle, converts it into a voxel
-coordination-surface mask, samples trial positions from that mask, and runs a
-minimal Monte Carlo loop. The goal is to show how AtomVoxelizer supplies trial
-sites. The MC scoring function is intentionally small; a production MCMD
-workflow would replace it with an ORB-V3 energy evaluation.
+This tutorial builds a cube-like WulffPack nanoparticle, converts it into a
+voxel coordination-surface mask, samples trial positions from that mask, and
+runs a minimal Monte Carlo loop. The dry MC score slowly pushes the cube toward
+a more spherical radial distribution. The goal is to show how AtomVoxelizer
+supplies trial sites; a production MCMD workflow would replace the geometric
+score with an ORB-V3 energy evaluation.
 
 The complete script is available at
 ``examples/mcmd/orb_v3_wulff_mc.py``.
@@ -24,8 +25,8 @@ For ORB-V3 scoring, install ORB and PyTorch in the environment you use for
 simulation. The example keeps that import optional because loading ORB can
 download weights and initialize accelerator libraries.
 
-Build A Wulff Nanoparticle
---------------------------
+Build A Cube-Like WulffPack Nanoparticle
+----------------------------------------
 
 WulffPack creates a finite fcc particle from relative surface energies. The
 ``natoms`` argument is a target; the final atom count can differ because the
@@ -37,13 +38,13 @@ particle is built from symmetry-compatible atomic shells.
    from wulffpack import SingleCrystal
 
    primitive = bulk("Pt", "fcc", a=3.92)
-   surface_energies = {
-       (1, 1, 1): 1.00,
-       (1, 0, 0): 1.12,
-       (1, 1, 0): 1.25,
-   }
+   surface_energies = {(1, 0, 0): 1.0}
    particle = SingleCrystal(surface_energies, primitive_structure=primitive, natoms=201)
    atoms = particle.atoms
+
+Using only the ``(100)`` facet creates a deliberately cube-like starting point.
+That makes the dry MC demonstration visible: accepted moves can reduce the
+spread in atom distances from the nanoparticle center.
 
 WulffPack returns a finite cluster without a periodic simulation cell. A voxel
 grid needs an invertible cell, so the example translates the cluster into a
@@ -116,7 +117,11 @@ Minimal MC Loop
 
 The example chooses likely surface atoms by radial distance, picks a sampled
 voxel trial site, and moves the atom a short distance toward that site. The
-default score is a cheap geometric placeholder so the example runs anywhere.
+default score is a cheap geometric placeholder: it rewards a narrower radial
+distribution, but adds a displacement penalty so the cube does not instantly
+collapse into arbitrary trial sites. With the default ``temperature=0.05`` and
+``max_displacement=0.35``, the dry example is tuned to give roughly 10%
+acceptance for the small Pt cube.
 
 .. code-block:: python
 
@@ -127,13 +132,20 @@ default score is a cheap geometric placeholder so the example runs anywhere.
    distances = np.linalg.norm(atoms.positions - center, axis=1)
    movable = np.flatnonzero(distances >= np.quantile(distances, 0.65))
 
-   def geometric_score(atoms):
+   reference_positions = atoms.positions.copy()
+
+   def radial_variance(atoms):
        center = atoms.positions.mean(axis=0)
        distances = np.linalg.norm(atoms.positions - center, axis=1)
        return float(np.var(distances))
 
+   def geometric_score(atoms, displacement_weight=1.0):
+       displacement = atoms.positions - reference_positions
+       displacement_penalty = float(np.sum(displacement * displacement))
+       return radial_variance(atoms) + displacement_weight * displacement_penalty
+
    current_score = geometric_score(atoms)
-   beta = 1.0 / 600.0
+   beta = 1.0 / 0.05
 
    atom_index = int(rng.choice(movable))
    target = trial_sites[int(rng.integers(len(trial_sites)))]
@@ -161,6 +173,10 @@ Run the dry tutorial example with:
 
    python examples/mcmd/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 --steps 50 \
        --plot quickstart_wulff_mc_sites.png
+
+The script prints the accepted move count, acceptance ratio, initial/final
+radial variance, and mean/max displacement from the starting structure so you
+can confirm that atoms actually moved during the dry run.
 
 To try the optional ORB-V3 scorer after installing ORB and its model
 dependencies:
