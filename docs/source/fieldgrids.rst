@@ -1,13 +1,15 @@
 Field Voxel Grids
 =================
 
-``FieldVoxelGrid`` is an experimental NumPy-only grid for storing scalar,
-vector, or matrix-valued data at each voxel. It keeps the same periodic
-indexing and sphere-stencil logic as ``VoxelGrid``, but the array shape is
+``FieldVoxelGrid`` is an experimental grid for storing scalar, vector, or
+matrix-valued data at each voxel. It keeps the same periodic indexing and
+sphere-stencil logic as ``VoxelGrid``, but the array shape is
 ``(*gpts, *value_shape)``.
 
-CuPy and Taichi field-grid backends are not implemented. Accessing those
-backend names raises ``NotImplementedError``.
+The default field-grid implementation uses NumPy. ``FieldVoxelGridNumba`` and
+``VectorVoxelGridNumba`` are available when Numba is installed. CuPy and Taichi
+field-grid backends are not implemented. Accessing those backend names raises
+``NotImplementedError``.
 
 Value Shapes
 ------------
@@ -27,6 +29,11 @@ Use ``value_shape`` to choose what each voxel stores:
 
    # Convenience alias for value_shape=(3,)
    vector = VectorVoxelGrid(cell, resolution=0.25)
+
+   # Optional compiled CPU backend
+   from atomvoxelizer import FieldVoxelGridNumba, VectorVoxelGridNumba
+
+   vector_numba = VectorVoxelGridNumba(cell, resolution=0.25)
 
 ``value_shape=()`` stores true scalar values. ``value_shape=(1,)`` stores
 scalars as length-one vectors, which can be useful when a workflow wants all
@@ -66,6 +73,11 @@ The field can then be normalized while leaving zero vectors unchanged:
 The figure below shows a two-atom slice. The left panel is the raw sum of
 normal-vector sphere masks. The right panel is the same field after safe
 normalization, where zero vectors remain zero.
+
+The arrows are anchored at voxel centers. For the visual example, the atom
+markers are placed on voxel centers as well; for arbitrary atom positions,
+markers and arrows can differ by up to about half a voxel because the grid is a
+discrete representation.
 
 .. image:: _static/field_normal_mask.png
    :alt: Normal-vector mask construction and normalized vector field

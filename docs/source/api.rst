@@ -14,8 +14,9 @@ API Reference
 Experimental Field Grids
 ------------------------
 
-These NumPy-only classes are experimental. CuPy and Taichi field-grid backends
-are not implemented.
+These classes are experimental. The default implementation uses NumPy, and the
+Numba field-grid backend is available when Numba is installed. CuPy and Taichi
+field-grid backends are not implemented.
 
 .. autoclass:: atomvoxelizer.FieldVoxelGrid
    :members:
@@ -23,6 +24,16 @@ are not implemented.
    :show-inheritance:
 
 .. autoclass:: atomvoxelizer.VectorVoxelGrid
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: atomvoxelizer.FieldVoxelGridNumba
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: atomvoxelizer.VectorVoxelGridNumba
    :members:
    :undoc-members:
    :show-inheritance:

@@ -8,13 +8,15 @@ https://keepachangelog.com/en/1.1.0/
 ## [Unreleased]
 
 ### Added
-- None.
+- Added optional Numba backends for experimental field-valued grids:
+  ``FieldVoxelGridNumba`` and ``VectorVoxelGridNumba``.
 
 ### Changed
-- None.
+- Clarified the algorithm documentation around cached sphere stencils and
+  scaling relative to all grid-point-by-atom distance scans.
 
 ### Fixed
-- None.
+- Aligned the field-grid normal-mask documentation visual with voxel centers.
 
 ## [0.2.9] - 2026-07-01
 

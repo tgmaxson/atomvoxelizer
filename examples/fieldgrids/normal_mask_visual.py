@@ -12,8 +12,8 @@ def build_normal_mask_grid():
     cell = np.eye(3) * 8.0
     centers = np.array(
         [
-            [3.0, 4.0, 4.0],
-            [5.0, 4.0, 4.0],
+            [3.25, 4.25, 4.25],
+            [5.25, 4.25, 4.25],
         ],
         dtype=float,
     )
@@ -30,7 +30,7 @@ def plot_normal_mask_process(output):
     import matplotlib.pyplot as plt
 
     grid, centers, raw, normalized = build_normal_mask_grid()
-    z_index = grid.position_to_index([0.0, 0.0, 4.0])[2]
+    z_index = grid.position_to_index([0.0, 0.0, centers[0, 2]])[2]
     grid.grid = raw
     raw_data = grid.quiver_slice_data(axis="z", index=z_index, stride=1, min_norm=0.1, normalize=False)
     grid.grid = normalized

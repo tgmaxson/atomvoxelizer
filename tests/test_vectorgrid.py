@@ -150,3 +150,55 @@ def test_accelerated_field_grid_names_raise_not_implemented():
         atomvoxelizer.VectorVoxelGridCuPy
     with pytest.raises(NotImplementedError, match="not implemented"):
         atomvoxelizer.FieldVoxelGridTaichi
+
+
+def test_numba_field_grid_matches_numpy_for_scalar_constant_mask():
+    pytest.importorskip("numba")
+    from atomvoxelizer import FieldVoxelGridNumba
+
+    cell = np.eye(3) * 4.0
+    kwargs = dict(cell=cell, gpts=(4, 4, 4), value_shape=(), dtype=np.float64)
+    numpy_grid = FieldVoxelGrid(**kwargs)
+    numba_grid = FieldVoxelGridNumba(**kwargs)
+
+    numpy_grid.add_sphere([1.2, 1.3, 1.4], radius=1.1, value=2.5)
+    numba_grid.add_sphere([1.2, 1.3, 1.4], radius=1.1, value=2.5)
+
+    np.testing.assert_allclose(numba_grid.grid, numpy_grid.grid)
+
+
+def test_numba_field_grid_matches_numpy_for_matrix_batch_mask():
+    pytest.importorskip("numba")
+    from atomvoxelizer import FieldVoxelGridNumba
+
+    cell = np.eye(3) * 5.0
+    kwargs = dict(cell=cell, gpts=(5, 5, 5), value_shape=(2, 2), dtype=np.float64)
+    numpy_grid = FieldVoxelGrid(**kwargs)
+    numba_grid = FieldVoxelGridNumba(**kwargs)
+    centers = np.array([[1.2, 1.3, 1.4], [3.2, 3.3, 3.4]])
+    radii = np.array([1.1, 1.1])
+    value = np.array([[1.0, 2.0], [3.0, 4.0]])
+
+    numpy_grid.set_spheres(centers, radii, value=value)
+    numpy_grid.mul_spheres(centers, radii, factor=value)
+    numba_grid.set_spheres(centers, radii, value=value)
+    numba_grid.mul_spheres(centers, radii, factor=value)
+
+    np.testing.assert_allclose(numba_grid.grid, numpy_grid.grid)
+
+
+def test_numba_vector_grid_matches_numpy_for_normal_mask():
+    pytest.importorskip("numba")
+    from atomvoxelizer import VectorVoxelGridNumba
+
+    cell = np.eye(3) * 5.0
+    kwargs = dict(cell=cell, gpts=(5, 5, 5), dtype=np.float64)
+    numpy_grid = VectorVoxelGrid(**kwargs)
+    numba_grid = VectorVoxelGridNumba(**kwargs)
+    centers = np.array([[1.2, 1.3, 1.4], [3.2, 3.3, 3.4]])
+    radii = np.array([1.1, 1.1])
+
+    numpy_grid.add_spheres(centers, radii, mask="normal")
+    numba_grid.add_spheres(centers, radii, mask="normal")
+
+    np.testing.assert_allclose(numba_grid.grid, numpy_grid.grid)

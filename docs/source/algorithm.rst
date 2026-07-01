@@ -32,6 +32,21 @@ callback: ``set_sphere``, ``add_sphere``, ``mul_sphere``, ``div_sphere``, and
 ``min_sphere``. The batch versions apply the same operations to many centers and
 radii.
 
+This is the main scaling choice in AtomVoxelizer. A direct distance-field
+implementation would usually loop over every grid point and compare it with
+every atom, which is ``O(N_atoms * N_voxels)``. AtomVoxelizer instead loops over
+atoms and only visits the voxels in the local sphere stencil. For fixed radius
+and fixed resolution, the number of stencil voxels is roughly constant, so the
+voxel painting step scales approximately as ``O(N_atoms)``. Increasing the
+radius or refining the resolution increases the stencil size, but the method
+still avoids scanning unrelated voxels far from each atom.
+
+The cached stencil is defined on voxel-center offsets. Atom positions are first
+mapped to the nearest containing voxel index, and the offset list is applied
+around that index. This means visual markers placed at exact atom coordinates
+will not always coincide perfectly with quiver arrows or occupied voxel centers;
+the arrows and occupied points live at voxel centers.
+
 Mask Types
 ----------
 
@@ -47,6 +62,11 @@ Sphere operations support two mask types:
    distances are cached alongside the sphere offsets. Using ``min_spheres`` with
    ``mask="distance"`` gives a nearest-atom distance field within the chosen
    cutoff radius.
+
+Field grids add a ``normal`` mask for ``value_shape=(3,)``. It stores the unit
+vector pointing away from the atom-center voxel for each selected voxel. Adding
+many normal masks and then normalizing the nonzero vectors gives a local
+direction field around a surface.
 
 Periodic Analysis
 -----------------
@@ -81,6 +101,11 @@ sphere operations with compiled loops. Its batch operations group atoms with the
 same radius, reuse cached stencils, and update a flattened grid array. This
 removes most Python overhead from repeated sphere painting and is generally the
 fastest CPU backend for the current voxelization workloads.
+
+``FieldVoxelGridNumba`` and ``VectorVoxelGridNumba`` provide the same compiled
+loop strategy for experimental field-valued grids. They support constant masks
+for scalar, vector, and matrix-like values, and normal masks for three-component
+vector fields. CuPy and Taichi field-grid backends are not implemented.
 
 The CuPy backend stores the grid on a CUDA device and uses CuPy indexed updates.
 It is useful when the GPU workload is large enough to amortize data movement and

@@ -83,7 +83,7 @@ Optional Feature Map
      - ASE structure loading, CIF examples, Wulff and surface examples
    * - Numba backend
      - ``pip install numba``
-     - ``VoxelGridNumba``
+     - ``VoxelGridNumba``, ``FieldVoxelGridNumba``, ``VectorVoxelGridNumba``
    * - CuPy backend
      - ``pip install cupy-cuda12x`` or the CuPy package matching your CUDA runtime
      - ``VoxelGridCuPy``

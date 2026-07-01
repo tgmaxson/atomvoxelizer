@@ -36,8 +36,10 @@ explicit: `VoxelGridNumba`, `VoxelGridTaichi`, and `VoxelGridCuPy`.
 analysis when the `analysis` extra is installed. The examples extra installs
 ASE for CIF loading and Wulff construction examples.
 
-AtomVoxelizer also includes an experimental NumPy-only `FieldVoxelGrid` for
-scalar, vector, and matrix-valued fields at each voxel.
+AtomVoxelizer also includes experimental field grids for scalar, vector, and
+matrix-valued data at each voxel. Use `FieldVoxelGrid` / `VectorVoxelGrid` for
+the NumPy implementation, or `FieldVoxelGridNumba` / `VectorVoxelGridNumba`
+when Numba is installed.
 
 ## Basic Usage
 

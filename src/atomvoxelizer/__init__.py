@@ -15,8 +15,10 @@ __all__ = [
     "VoxelRegion",
     "FieldVoxelGrid",
     "FieldVoxelGridNumPy",
+    "FieldVoxelGridNumba",
     "VectorVoxelGrid",
     "VectorVoxelGridNumPy",
+    "VectorVoxelGridNumba",
 ]
 
 
@@ -38,6 +40,14 @@ def __getattr__(name):
         from .numba_backend import VoxelGridNumba
 
         return VoxelGridNumba
+    if name == "FieldVoxelGridNumba":
+        from .numba_field_backend import FieldVoxelGridNumba
+
+        return FieldVoxelGridNumba
+    if name == "VectorVoxelGridNumba":
+        from .numba_field_backend import VectorVoxelGridNumba
+
+        return VectorVoxelGridNumba
     if name == "VoxelGridTaichi":
         from .taichi_backend import VoxelGridTaichi
 
