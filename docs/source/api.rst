@@ -14,8 +14,8 @@ API Reference
 Experimental Field Grids
 ------------------------
 
-These NumPy-only classes are experimental and live on the vector-field
-development branch.
+These NumPy-only classes are experimental. CuPy and Taichi field-grid backends
+are not implemented.
 
 .. autoclass:: atomvoxelizer.FieldVoxelGrid
    :members:

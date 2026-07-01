@@ -168,7 +168,7 @@ class FieldVoxelGrid(VoxelGrid):
     def normalize_values(self, inplace=True):
         """Normalize nonzero voxel values and leave zero values unchanged."""
         target = self.grid if inplace else self.grid.copy()
-        norms = np.asarray(self.value_norms() if inplace else FieldVoxelGrid._norms_for(target, self.value_shape))
+        norms = self._norms_for(target, self.value_shape)
         nonzero = norms > 0.0
         if self.value_shape == ():
             target[nonzero] /= norms[nonzero]
@@ -211,6 +211,35 @@ class FieldVoxelGrid(VoxelGrid):
         if self.value_shape != (3,):
             raise ValueError(f"{operation} requires value_shape=(3,)")
 
+    @staticmethod
+    def _normalize_selected(vectors):
+        if vectors.size == 0:
+            return vectors
+        normalized = vectors.copy()
+        norms = np.linalg.norm(normalized, axis=-1)
+        nonzero = norms > 0.0
+        normalized[nonzero] /= norms[nonzero, None]
+        return normalized
+
+    def _voxel_center_positions(self):
+        nx, ny, nz = self.gpts
+        ix, iy, iz = np.meshgrid(
+            np.arange(nx),
+            np.arange(ny),
+            np.arange(nz),
+            indexing="ij",
+        )
+        frac = (np.stack([ix, iy, iz], axis=-1) + 0.5) / self.gpts
+        return frac @ self.cell
+
+    def _sampled_vector_mask(self, norms, stride, min_norm):
+        if stride < 1:
+            raise ValueError("stride must be at least 1")
+        selected = norms > min_norm
+        sampled = np.zeros_like(selected, dtype=bool)
+        sampled[(slice(None, None, stride),) * selected.ndim] = True
+        return selected & sampled
+
     def _slice_index(self, axis, index=None, position=None):
         ax_map = {"x": 0, "y": 1, "z": 2}
         if axis not in ax_map:
@@ -230,8 +259,6 @@ class FieldVoxelGrid(VoxelGrid):
         """Return 2D quiver data for a slice through a three-component vector field."""
         self._check_vector_field("quiver_slice_data")
         ax_idx, index = self._slice_index(axis, index=index, position=position)
-        if stride < 1:
-            raise ValueError("stride must be at least 1")
 
         axes = [0, 1, 2]
         axes.remove(ax_idx)
@@ -239,32 +266,13 @@ class FieldVoxelGrid(VoxelGrid):
         slicers = [slice(None)] * 3
         slicers[ax_idx] = index
         vectors = self.grid[tuple(slicers)]
-
-        grid_axes = np.meshgrid(
-            np.arange(self.gpts[ax1]),
-            np.arange(self.gpts[ax2]),
-            indexing="ij",
-        )
-        fixed = np.full_like(grid_axes[0], index)
-        index_arrays = [None, None, None]
-        index_arrays[ax_idx] = fixed
-        index_arrays[ax1] = grid_axes[0]
-        index_arrays[ax2] = grid_axes[1]
-        frac = (np.stack(index_arrays, axis=-1) + 0.5) / self.gpts
-        positions = frac @ self.cell
+        positions = self._voxel_center_positions()[tuple(slicers)]
 
         norms = np.linalg.norm(vectors, axis=-1)
-        selected = norms > min_norm
-        sampled = np.zeros_like(selected, dtype=bool)
-        sampled[::stride, ::stride] = True
-        selected &= sampled
-
+        selected = self._sampled_vector_mask(norms, stride, min_norm)
         selected_vectors = vectors[selected]
-        if normalize and selected_vectors.size:
-            selected_norms = np.linalg.norm(selected_vectors, axis=-1)
-            nonzero = selected_norms > 0.0
-            selected_vectors = selected_vectors.copy()
-            selected_vectors[nonzero] /= selected_norms[nonzero, None]
+        if normalize:
+            selected_vectors = self._normalize_selected(selected_vectors)
 
         return {
             "x": positions[..., ax1][selected],
@@ -311,32 +319,14 @@ class FieldVoxelGrid(VoxelGrid):
     def quiver_3d_data(self, stride=1, min_norm=0.0, normalize=False):
         """Return 3D quiver data for a three-component vector field."""
         self._check_vector_field("quiver_3d_data")
-        if stride < 1:
-            raise ValueError("stride must be at least 1")
-
-        nx, ny, nz = self.gpts
-        ix, iy, iz = np.meshgrid(
-            np.arange(nx),
-            np.arange(ny),
-            np.arange(nz),
-            indexing="ij",
-        )
-        frac = (np.stack([ix, iy, iz], axis=-1) + 0.5) / self.gpts
-        positions = frac @ self.cell
+        positions = self._voxel_center_positions()
         vectors = self.grid
         norms = np.linalg.norm(vectors, axis=-1)
 
-        selected = norms > min_norm
-        sampled = np.zeros_like(selected, dtype=bool)
-        sampled[::stride, ::stride, ::stride] = True
-        selected &= sampled
-
+        selected = self._sampled_vector_mask(norms, stride, min_norm)
         selected_vectors = vectors[selected]
-        if normalize and selected_vectors.size:
-            selected_norms = np.linalg.norm(selected_vectors, axis=-1)
-            nonzero = selected_norms > 0.0
-            selected_vectors = selected_vectors.copy()
-            selected_vectors[nonzero] /= selected_norms[nonzero, None]
+        if normalize:
+            selected_vectors = self._normalize_selected(selected_vectors)
 
         selected_positions = positions[selected]
         return {
@@ -362,6 +352,12 @@ class FieldVoxelGrid(VoxelGrid):
         ax.set_ylabel("y")
         ax.set_zlabel("z")
         return ax
+
+    def plot_2D(self, *args, **kwargs):
+        raise NotImplementedError("plot_2D is not implemented for FieldVoxelGrid; use plot_quiver_slice")
+
+    def plot_3D(self, *args, **kwargs):
+        raise NotImplementedError("plot_3D is not implemented for FieldVoxelGrid; use plot_quiver_3D")
 
 
 class VectorVoxelGrid(FieldVoxelGrid):

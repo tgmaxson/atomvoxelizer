@@ -139,6 +139,10 @@ def test_field_grid_rejects_unsupported_shapes_and_masks():
         grid.min_sphere([0.5, 0.5, 0.5], radius=0.1)
     with pytest.raises(NotImplementedError, match="clamp_grid"):
         grid.clamp_grid()
+    with pytest.raises(NotImplementedError, match="plot_2D"):
+        grid.plot_2D()
+    with pytest.raises(NotImplementedError, match="plot_3D"):
+        grid.plot_3D()
 
 
 def test_accelerated_field_grid_names_raise_not_implemented():
