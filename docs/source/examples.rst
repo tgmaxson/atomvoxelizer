@@ -94,7 +94,7 @@ workflow to a periodic stepped Pt(211) slab:
 Voxel-Guided MC Trial Moves
 ---------------------------
 
-``examples/mcmd/orb_v3_wulff_mc.py`` builds a cube-like WulffPack nanoparticle,
+``examples/mc/orb_v3_wulff_mc.py`` builds a cube-like WulffPack nanoparticle,
 constructs a coordination-surface voxel mask, samples surface trial sites, and
 runs a minimal Monte Carlo loop that slowly lowers the radial variance. The
 default score is geometric so the example can run without ORB model weights;
@@ -103,7 +103,10 @@ hook.
 
 .. code-block:: bash
 
-   python examples/mcmd/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 --steps 50
+   python examples/mc/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 --steps 50
+
+By default the script writes ``examples/mc/orb_v3_wulff_mc.traj`` for viewing
+the MC path with ASE.
 
 The step-by-step explanation is in :doc:`quickstart`.
 

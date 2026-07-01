@@ -149,7 +149,16 @@ def make_orb_v3_score(device="cpu"):
     return score
 
 
-def run_minimal_mc(atoms, trial_sites, steps=50, temperature=0.05, max_displacement=0.35, seed=11, score_fn=None):
+def run_minimal_mc(
+    atoms,
+    trial_sites,
+    steps=50,
+    temperature=0.05,
+    max_displacement=0.35,
+    seed=11,
+    score_fn=None,
+    return_frames=False,
+):
     """Run a tiny Metropolis loop using voxel-sampled trial directions."""
     rng = np.random.default_rng(seed)
     score_fn = make_geometric_score(atoms.positions) if score_fn is None else score_fn
@@ -157,9 +166,23 @@ def run_minimal_mc(atoms, trial_sites, steps=50, temperature=0.05, max_displacem
     current_score = score_fn(atoms)
     accepted = 0
     trajectory = []
+    frames = []
     if temperature <= 0.0:
         raise ValueError("temperature must be positive")
     beta = 1.0 / temperature
+    if return_frames:
+        initial = atoms.copy()
+        initial.info.update(
+            {
+                "mc_step": -1,
+                "mc_atom_index": -1,
+                "mc_accepted": True,
+                "mc_score": current_score,
+                "mc_acceptance_ratio": 0.0,
+                "mc_radial_variance": radial_variance(atoms),
+            }
+        )
+        frames.append(initial)
 
     for step in range(steps):
         atom_index = int(rng.choice(movable))
@@ -180,9 +203,36 @@ def run_minimal_mc(atoms, trial_sites, steps=50, temperature=0.05, max_displacem
         else:
             atoms.positions[atom_index] = old_position
 
-        trajectory.append((step, atom_index, current_score, accepted / (step + 1), float(accept)))
+        acceptance_ratio = accepted / (step + 1)
+        trajectory.append((step, atom_index, current_score, acceptance_ratio, float(accept)))
+        if return_frames:
+            frame = atoms.copy()
+            frame.info.update(
+                {
+                    "mc_step": step,
+                    "mc_atom_index": atom_index,
+                    "mc_accepted": bool(accept),
+                    "mc_score": current_score,
+                    "mc_acceptance_ratio": acceptance_ratio,
+                    "mc_radial_variance": radial_variance(atoms),
+                }
+            )
+            frames.append(frame)
 
-    return np.array(trajectory, dtype=float)
+    trajectory = np.array(trajectory, dtype=float)
+    if return_frames:
+        return trajectory, frames
+    return trajectory
+
+
+def write_mc_trajectory(frames, output):
+    """Write MC frames to an ASE-readable trajectory file."""
+    from ase.io import write
+
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    write(output, frames)
+    return output
 
 
 def plot_trial_sites(atoms, trial_sites, output):
@@ -217,6 +267,11 @@ def main():
     parser.add_argument("--displacement-weight", type=float, default=1.0)
     parser.add_argument("--device", default="cpu", help="Device passed to ORB-V3 when --score orb-v3 is used.")
     parser.add_argument("--plot", default=None, help="Optional path for a 3D plot of atoms and trial sites.")
+    parser.add_argument(
+        "--trajectory",
+        default=str(Path(__file__).with_name("orb_v3_wulff_mc.traj")),
+        help="ASE trajectory output path. Use an empty string to disable writing frames.",
+    )
     args = parser.parse_args()
 
     atoms = put_cluster_in_voxel_cell(build_wulff_nanoparticle(args.symbol, args.natoms, shape=args.shape))
@@ -228,7 +283,7 @@ def main():
         score_fn = make_orb_v3_score(args.device)
     else:
         score_fn = make_geometric_score(initial_positions, displacement_weight=args.displacement_weight)
-    trajectory = run_minimal_mc(
+    mc_result = run_minimal_mc(
         atoms,
         trial_sites,
         steps=args.steps,
@@ -236,7 +291,13 @@ def main():
         max_displacement=args.max_displacement,
         seed=args.seed,
         score_fn=score_fn,
+        return_frames=bool(args.trajectory),
     )
+    if args.trajectory:
+        trajectory, frames = mc_result
+    else:
+        trajectory = mc_result
+        frames = None
     displacements = np.linalg.norm(atoms.positions - initial_positions, axis=1)
 
     print(f"atoms: {len(atoms)}")
@@ -249,6 +310,8 @@ def main():
     print(f"acceptance ratio: {trajectory[-1, 3]:.3f}")
     print(f"mean displacement: {displacements.mean():.4f} A")
     print(f"max displacement: {displacements.max():.4f} A")
+    if args.trajectory:
+        print(f"trajectory: {write_mc_trajectory(frames, args.trajectory)}")
     if args.plot:
         print(f"plot: {plot_trial_sites(atoms, trial_sites, args.plot)}")
 

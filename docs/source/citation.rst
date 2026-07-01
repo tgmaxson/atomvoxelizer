@@ -22,7 +22,7 @@ Known publications using this method or the predecessor voxel-grid workflow:
        Nanoparticle Catalyst Surfaces." *Angewandte Chemie Novit* 1, no. 1
        (2025): e70008.
      - https://doi.org/10.1002/anov.70008
-     - Uses the voxel-grid method to generate MCMD trial moves near nanoparticle
+     - Uses the voxel-grid method to generate MC trial moves near nanoparticle
        catalyst surfaces.
 
 Recommended entry format:

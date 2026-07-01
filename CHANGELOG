@@ -10,10 +10,13 @@ https://keepachangelog.com/en/1.1.0/
 ### Added
 - Added optional Numba backends for experimental field-valued grids:
   ``FieldVoxelGridNumba`` and ``VectorVoxelGridNumba``.
+- Added ASE trajectory output for the voxel-guided MC quickstart example.
 
 ### Changed
 - Clarified the algorithm documentation around cached sphere stencils and
   scaling relative to all grid-point-by-atom distance scans.
+- Renamed the voxel-guided MC example folder from ``examples/mcmd`` to
+  ``examples/mc`` and removed MCMD wording.
 
 ### Fixed
 - Aligned the field-grid normal-mask documentation visual with voxel centers.

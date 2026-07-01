@@ -5,11 +5,11 @@ This tutorial builds a cube-like WulffPack nanoparticle, converts it into a
 voxel coordination-surface mask, samples trial positions from that mask, and
 runs a minimal Monte Carlo loop. The dry MC score slowly pushes the cube toward
 a more spherical radial distribution. The goal is to show how AtomVoxelizer
-supplies trial sites; a production MCMD workflow would replace the geometric
+supplies trial sites; a production MC workflow would replace the geometric
 score with an ORB-V3 energy evaluation.
 
 The complete script is available at
-``examples/mcmd/orb_v3_wulff_mc.py``.
+``examples/mc/orb_v3_wulff_mc.py``.
 
 Install Tutorial Dependencies
 -----------------------------
@@ -160,7 +160,7 @@ acceptance for the small Pt cube.
    if not accept:
        atoms.positions[atom_index] = old_position
 
-In an ORB-V3 MCMD workflow, the voxel part stays the same. The scoring function
+In an ORB-V3 MC workflow, the voxel part stays the same. The scoring function
 is the part that changes: evaluate the old and trial structures with ORB-V3,
 then apply the usual Metropolis criterion to the energy difference.
 
@@ -171,19 +171,36 @@ Run the dry tutorial example with:
 
 .. code-block:: bash
 
-   python examples/mcmd/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 --steps 50 \
+   python examples/mc/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 --steps 50 \
        --plot quickstart_wulff_mc_sites.png
 
 The script prints the accepted move count, acceptance ratio, initial/final
 radial variance, and mean/max displacement from the starting structure so you
-can confirm that atoms actually moved during the dry run.
+can confirm that atoms actually moved during the dry run. It also writes an ASE
+trajectory by default:
+
+.. code-block:: text
+
+   examples/mc/orb_v3_wulff_mc.traj
+
+Open it with ASE to inspect the MC path:
+
+.. code-block:: bash
+
+   ase gui examples/mc/orb_v3_wulff_mc.traj
+
+The first frame is the starting cube-like particle. Each following frame is the
+structure after one MC step; rejected steps repeat the previous coordinates but
+still carry updated ``Atoms.info`` metadata such as ``mc_accepted`` and
+``mc_score``. Pass ``--trajectory ""`` to skip writing frames, or
+``--trajectory path/to/file.traj`` to choose a different output path.
 
 To try the optional ORB-V3 scorer after installing ORB and its model
 dependencies:
 
 .. code-block:: bash
 
-   python examples/mcmd/orb_v3_wulff_mc.py --score orb-v3 --device cpu --steps 10
+   python examples/mc/orb_v3_wulff_mc.py --score orb-v3 --device cpu --steps 10
 
 The ORB helper is intentionally isolated in the example script. ORB package
 APIs, weights, and accelerator setup can change independently of the voxel-grid
