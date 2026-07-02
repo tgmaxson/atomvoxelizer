@@ -27,6 +27,17 @@ supercell scaling:
 
    python examples/zeolite/zeolite_voxel.py BEA
 
+For a single documentation-style slice through the framework grid:
+
+.. code-block:: bash
+
+   python examples/zeolite/zeolite_slice_visual.py --framework BEA \
+       --resolution 0.25 --output docs/source/_static/zeolite_voxel_slice.png
+
+.. image:: _static/zeolite_voxel_slice.png
+   :alt: BEA zeolite voxel-grid slice showing atomic cores, void space, and coordination shell voxels
+   :width: 85%
+
 Zeolite Geometric Pore Analysis
 -------------------------------
 
