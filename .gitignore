@@ -9,6 +9,7 @@ build/
 dist/
 dist-local-check/
 *.egg-info/
+tmp/
 
 docs/build/
 benchmarks/*.png

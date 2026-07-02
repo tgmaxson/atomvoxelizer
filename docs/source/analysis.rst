@@ -105,6 +105,9 @@ to the center of the probe. The reported surface area is the boundary of that
 accessible-center region, not a BET measurement and not yet a rolling-probe
 contact-area correction.
 
+See :doc:`probe_pore_volume` for a BEA comparison against PoreBlazer and a
+minimal probe-volume workflow.
+
 Scalar Distance Surfaces
 ------------------------
 

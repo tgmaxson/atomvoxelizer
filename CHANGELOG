@@ -13,12 +13,16 @@ https://keepachangelog.com/en/1.1.0/
 - Added ASE trajectory output for the voxel-guided MC quickstart example.
 - Added probe-center accessibility analysis from supplied positions, atomic
   radii, and probe radius.
+- Added a probe pore-volume documentation page with a BEA comparison against
+  PoreBlazer.
 
 ### Changed
 - Clarified the algorithm documentation around cached sphere stencils and
   scaling relative to all grid-point-by-atom distance scans.
 - Renamed the voxel-guided MC example folder from ``examples/mcmd`` to
   ``examples/mc`` and removed MCMD wording.
+- Ignored local ``tmp/`` scratch folders so compiled comparison tools and
+  generated reference outputs are not tracked.
 
 ### Fixed
 - Aligned the field-grid normal-mask documentation visual with voxel centers.
