@@ -16,7 +16,8 @@ Experimental Field Grids
 
 These classes are experimental. The default implementation uses NumPy, and the
 Numba field-grid backend is available when Numba is installed. CuPy and Taichi
-field-grid backends are not implemented.
+field-grid backends are not implemented. See :doc:`concepts` for the field-grid
+model.
 
 .. autoclass:: atomvoxelizer.FieldVoxelGrid
    :members:

@@ -44,28 +44,6 @@ The canonical source repository is:
 
    https://gitlab.com/tgmaxson/atomvoxelizer
 
-Development Commands
---------------------
-
-Run the tests:
-
-.. code-block:: bash
-
-   pytest
-
-Build the documentation:
-
-.. code-block:: bash
-
-   sphinx-build -b html docs/source docs/build/html
-
-Build and check release artifacts:
-
-.. code-block:: bash
-
-   python -m build
-   twine check dist/*
-
 Optional Feature Map
 --------------------
 
@@ -99,3 +77,6 @@ Optional Feature Map
    * - Publishing
      - ``pip install "AtomVoxelizer[publish]"``
      - building and checking PyPI artifacts
+
+See :doc:`contributing` for development commands, testing, documentation
+builds, and release publishing.

@@ -112,3 +112,35 @@ examples, or review:
      - Role
    * - `Tristan Maxson <https://www.linkedin.com/in/tgmaxson/>`_
      - Primary maintainer
+
+Release Checklist
+-----------------
+
+Releases are built from the GitLab repository using the standard
+``pyproject.toml`` build workflow. Before publishing a release, run the CPU
+tests and rebuild the documentation:
+
+.. code-block:: bash
+
+   pytest
+   sphinx-build -b html docs/source docs/build/html
+
+Build and check the source distribution and wheel:
+
+.. code-block:: bash
+
+   python -m build
+   twine check dist/*
+
+Upload to TestPyPI first when validating package metadata or dependency
+changes:
+
+.. code-block:: bash
+
+   twine upload --repository testpypi dist/*
+
+Then upload the checked artifacts to PyPI:
+
+.. code-block:: bash
+
+   twine upload dist/*

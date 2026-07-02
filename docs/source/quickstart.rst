@@ -86,7 +86,7 @@ The coordination-surface mask is built with two sphere passes:
    grid.set_spheres(atoms.positions, 1.1 * radii, value=0.0)
 
 This is the same stencil-based operation described in
-:doc:`algorithm`. AtomVoxelizer visits the local sphere stencil around each
+:doc:`concepts`. AtomVoxelizer visits the local sphere stencil around each
 atom instead of scanning every grid point against every atom.
 
 Sample Trial Sites
