@@ -77,6 +77,18 @@ new behavior, update documentation when user-facing behavior changes, and avoid
 adding required dependencies unless they are necessary for the core NumPy
 backend. Optional acceleration and analysis packages should stay optional.
 
+All submitted code is reviewed before acceptance. Review may cover correctness,
+maintainability, tests, documentation, dependency choices, and consistency with
+the package API. Contributors should expect requested revisions before a merge
+request is accepted.
+
+AI-assisted development tools, including tools such as Claude Code and Codex,
+are generally permitted. Contributors remain responsible for the submitted
+code, tests, documentation, and licensing. AI-assisted changes should follow
+the same style and quality expectations as any other contribution, and should
+not introduce unrelated rewrites, unexplained complexity, or generated code
+that cannot be reviewed and maintained.
+
 Merge Requests
 --------------
 
