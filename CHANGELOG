@@ -8,6 +8,17 @@ https://keepachangelog.com/en/1.1.0/
 ## [Unreleased]
 
 ### Added
+- None.
+
+### Changed
+- None.
+
+### Fixed
+- None.
+
+## [0.2.10] - 2026-07-02
+
+### Added
 - Added optional Numba backends for experimental field-valued grids:
   ``FieldVoxelGridNumba`` and ``VectorVoxelGridNumba``.
 - Added ASE trajectory output for the voxel-guided MC quickstart example.

@@ -57,6 +57,11 @@ This example uses a pre-existing grid, positions, and radii arrays:
 can occupy that voxel without overlapping any atom. Set ``write_grid=True`` to
 store that binary mask back into the grid.
 
+``result.accessible_surface_area`` is the boundary area of the accessible voxel
+mask using the selected grid surface method. Use
+``probe_accessible_surface_area`` when you want a sampled accessible surface
+area based on inflated atom surfaces.
+
 BEA Comparison To PoreBlazer
 ----------------------------
 
@@ -142,6 +147,15 @@ closely:
 Small differences are expected because the two tools discretize and sample the
 structure independently. The close agreement for BEA indicates that the
 probe-accessible volume and surface-area calculations are consistent.
+
+Pore Size Distribution
+----------------------
+
+AtomVoxelizer does not currently compute pore size distributions (PSD). The
+current probe workflow covers probe-center accessible volume, connected
+accessible regions, and sampled accessible surface area. PSD support is planned
+as future work, likely from a pore-space distance field or largest-included
+sphere workflow.
 
 Timing
 ------

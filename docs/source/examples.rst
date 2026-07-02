@@ -59,6 +59,18 @@ triangulated estimate on smaller grids.
    :alt: BEA geometric pore-volume and surface-area convergence
    :width: 90%
 
+Probe Pore Volume
+-----------------
+
+``VoxelGridAnalysis.analyze_probe_accessibility`` estimates probe-center
+accessible volume from a user-supplied grid, atomic positions, radii, and probe
+radius. ``probe_accessible_surface_area`` estimates sampled accessible surface
+area from inflated atom surfaces.
+
+The dedicated :doc:`probe_pore_volume` page shows a BEA comparison against
+PoreBlazer, including the PoreBlazer input files, matched AtomVoxelizer setup,
+timing, and agreement for probe-accessible volume and surface area.
+
 Finite Wulff Distance Surface
 -----------------------------
 
