@@ -146,3 +146,29 @@ def test_probe_accessible_analysis_rejects_invalid_inputs():
         analysis.probe_accessible_mask([[0.0, 0.0, 0.0]], [-1.0], probe_radius=1.0)
     with pytest.raises(ValueError, match="probe_radius"):
         analysis.probe_accessible_mask([[0.0, 0.0, 0.0]], [1.0], probe_radius=-1.0)
+
+
+def test_probe_accessible_surface_area_samples_inflated_atom_surface():
+    analysis = VoxelGridAnalysis(VoxelGrid(np.eye(3) * 10.0, gpts=(10, 10, 10)))
+    positions = np.array([[5.0, 5.0, 5.0]])
+    radii = np.array([1.0])
+
+    area = analysis.probe_accessible_surface_area(
+        positions,
+        radii,
+        probe_radius=0.5,
+        samples_per_atom=64,
+    )
+
+    assert area == pytest.approx(4.0 * np.pi * 1.5**2)
+
+
+def test_probe_accessible_surface_area_rejects_invalid_sampling_inputs():
+    analysis = VoxelGridAnalysis(VoxelGrid(np.eye(3), gpts=(2, 2, 2)))
+    positions = np.array([[0.5, 0.5, 0.5]])
+    radii = np.array([0.2])
+
+    with pytest.raises(ValueError, match="samples_per_atom"):
+        analysis.probe_accessible_surface_area(positions, radii, probe_radius=0.1, samples_per_atom=0)
+    with pytest.raises(ValueError, match="surface_radius_scale"):
+        analysis.probe_accessible_surface_area(positions, radii, probe_radius=0.1, surface_radius_scale=0.0)

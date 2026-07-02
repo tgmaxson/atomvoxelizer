@@ -325,6 +325,52 @@ class VoxelGridAnalysis:
             accessible_mask=accessible,
         )
 
+    def probe_accessible_surface_area(
+        self,
+        positions,
+        radii,
+        probe_radius,
+        samples_per_atom=1000,
+        surface_radius_scale=1.0,
+    ):
+        """Estimate probe-accessible surface area by sampling inflated atom surfaces.
+
+        Points are placed deterministically on each sphere with a Fibonacci
+        sphere rule. A sampled point contributes to the area when it does not
+        overlap the inflated sphere around any other atom under periodic
+        boundary conditions.
+
+        ``surface_radius_scale`` defaults to 1.0 for a hard-sphere contact
+        surface. PoreBlazer uses 1.122 for its nitrogen accessible surface area
+        calculation.
+        """
+        positions, radii = self._validate_probe_inputs(positions, radii, probe_radius)
+        samples_per_atom = int(samples_per_atom)
+        surface_radius_scale = float(surface_radius_scale)
+        if samples_per_atom < 1:
+            raise ValueError("samples_per_atom must be at least 1")
+        if surface_radius_scale <= 0.0:
+            raise ValueError("surface_radius_scale must be positive")
+
+        directions = self._fibonacci_sphere(samples_per_atom)
+        surface_radii = surface_radius_scale * (radii + float(probe_radius))
+        total_area = 0.0
+
+        for atom_index, (position, surface_radius) in enumerate(zip(positions, surface_radii)):
+            points = position + directions * surface_radius
+            accessible = np.ones(samples_per_atom, dtype=bool)
+            for other_index, (other_position, other_radius) in enumerate(zip(positions, surface_radii)):
+                if other_index == atom_index:
+                    continue
+                disp_frac = (points - other_position) @ self.voxel_grid.cell_inv
+                disp_frac -= np.round(disp_frac)
+                disp = disp_frac @ self.cell
+                dist2 = np.einsum("ij,ij->i", disp, disp)
+                accessible &= dist2 >= other_radius * other_radius
+            total_area += 4.0 * np.pi * surface_radius * surface_radius * float(np.mean(accessible))
+
+        return float(total_area)
+
     @staticmethod
     def volume_angstrom3_to_cm3_per_g(volume_angstrom3, mass_amu):
         """Convert a cell/supercell volume from Angstrom^3 to cm^3/g."""
@@ -355,6 +401,14 @@ class VoxelGridAnalysis:
         if probe_radius < 0.0:
             raise ValueError("probe_radius must be non-negative")
         return positions, radii
+
+    @staticmethod
+    def _fibonacci_sphere(count):
+        indices = np.arange(count, dtype=float) + 0.5
+        z = 1.0 - 2.0 * indices / float(count)
+        theta = np.pi * (1.0 + np.sqrt(5.0)) * indices
+        radius = np.sqrt(np.maximum(0.0, 1.0 - z * z))
+        return np.column_stack((radius * np.cos(theta), radius * np.sin(theta), z))
 
     def _index_vertices_to_real(self, vertices):
         frac = vertices / self.gpts

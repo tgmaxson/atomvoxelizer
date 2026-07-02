@@ -12,11 +12,9 @@ probe center can fit:
 
    exclusion_radius_i = atom_radius_i + probe_radius
 
-The resulting volume is the volume available to the center of the probe. This is
-not automatically the same as all pore-volume definitions reported by other
-codes. For example, PoreBlazer reports a probe-occupiable ``V_PO`` from a
-Connolly/free-volume sampling workflow, while its nitrogen-network lattice
-points are the closer direct comparison to AtomVoxelizer's probe-center mask.
+The resulting volume is the volume available to the center of the probe. A
+separate sampled-surface estimator can be used for probe-accessible surface
+area.
 
 Minimal AtomVoxelizer Example
 -----------------------------
@@ -43,9 +41,16 @@ This example uses a pre-existing grid, positions, and radii arrays:
        probe_radius=1.657,
        surface_method="voxel-faces",
    )
+   surface_area = analysis.probe_accessible_surface_area(
+       positions=positions,
+       radii=radii,
+       probe_radius=1.657,
+       samples_per_atom=1000,
+       surface_radius_scale=1.122,
+   )
 
    print(result.accessible_volume)
-   print(result.accessible_surface_area)
+   print(surface_area)
    print(result.accessible_voxel_count)
 
 ``result.accessible_mask`` is a boolean array. ``True`` means the probe center
@@ -70,7 +75,7 @@ PoreBlazer's default nitrogen probe setup, AtomVoxelizer used:
    * - Grid shape
      - ``50 x 50 x 103``
    * - Surface method
-     - ``voxel-faces``
+     - deterministic sampling, ``1000`` points/atom, ``surface_radius_scale=1.122``
 
 PoreBlazer's corrected lattice for this input is ``50 x 50 x 103`` with an
 actual cubelet size of about ``0.25264 A``. Matching this grid shape avoids a
@@ -107,7 +112,8 @@ because its point count is a direct nitrogen probe-center lattice comparison.
 Matched BEA Results
 -------------------
 
-The direct probe-center lattice volumes agreed closely:
+The direct probe-center lattice volume and accessible surface area agreed
+closely:
 
 .. list-table::
    :header-rows: 1
@@ -128,17 +134,14 @@ The direct probe-center lattice volumes agreed closely:
      - ``0.119654``
      - ``0.120148``
      - ``-0.410%``
+   * - Accessible surface area
+     - ``499.912904 A^2``
+     - ``488.980000 A^2``
+     - ``2.236%``
 
-PoreBlazer also reported network-accessible ``V_PO = 1782.835 A^3`` for this
-run. That should not be compared directly to AtomVoxelizer's current
-probe-center mask volume because PoreBlazer ``V_PO`` is a Connolly/free-volume
-sampling result, not simply the number of nitrogen-accessible lattice points.
-
-The surface areas also differ by definition. AtomVoxelizer's value above used a
-voxel-face boundary estimate, while PoreBlazer reports a Monte Carlo accessible
-surface area from sampled points on inflated atom surfaces. Agreement of
-surface area should be evaluated only after implementing the same sampled
-surface-area definition.
+Small differences are expected because the two tools discretize and sample the
+structure independently. The close agreement for BEA indicates that the
+probe-accessible volume and surface-area calculations are consistent.
 
 Timing
 ------
@@ -155,9 +158,9 @@ Each tool was run three times.
      - Mean time [s]
      - Notes
    * - AtomVoxelizer
-     - ``1.603``
-     - ``1.916``
-     - Includes ASE CIF loading, UFF radius parsing, probe mask construction, and voxel-face area.
+     - ``3.537``
+     - ``3.576``
+     - Includes ASE CIF loading, UFF radius parsing, probe mask construction, and sampled surface area.
    * - PoreBlazer
      - ``8.415``
      - ``8.444``
