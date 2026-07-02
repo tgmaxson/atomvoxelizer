@@ -68,6 +68,43 @@ See :doc:`examples` for zeolite scripts and convergence plots. The current
 zeolite values are geometric voxel estimates rather than probe-accessible BET or
 adsorbate-specific pore-volume estimates.
 
+Probe-Center Accessibility
+--------------------------
+
+Probe analysis asks where the center of a spherical probe can fit. The caller
+supplies atomic positions, one radius per atom, and a probe radius. Atom
+exclusion radii are inflated by the probe radius:
+
+.. code-block:: python
+
+   import numpy as np
+
+   from atomvoxelizer import VoxelGrid, VoxelGridAnalysis
+
+   grid = VoxelGrid(cell, resolution=0.25)
+   analysis = VoxelGridAnalysis(grid)
+
+   result = analysis.analyze_probe_accessibility(
+       positions=positions,
+       radii=covalent_radii,
+       probe_radius=1.86,
+       surface_method="voxel-faces",
+   )
+
+   print(result.accessible_volume)
+   print(result.accessible_surface_area)
+
+``result.accessible_mask`` is a boolean mask where ``True`` means a probe
+center can occupy that voxel without overlapping any atom. The default analysis
+does not modify the input grid. Set ``write_grid=True`` to store the binary
+accessible mask back into the grid as 1 for accessible voxels and 0 for
+excluded voxels.
+
+This is a probe-center calculation. The reported volume is the volume available
+to the center of the probe. The reported surface area is the boundary of that
+accessible-center region, not a BET measurement and not yet a rolling-probe
+contact-area correction.
+
 Scalar Distance Surfaces
 ------------------------
 

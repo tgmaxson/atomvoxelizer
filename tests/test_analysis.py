@@ -95,3 +95,54 @@ def test_analyze_regions_supports_voxel_face_surface_method():
 
     with pytest.raises(ValueError, match="surface_method"):
         VoxelGridAnalysis(grid).analyze_regions(threshold=0.5, surface_method="bad")
+
+
+def test_probe_accessible_mask_inflates_atom_radii_without_mutating_grid_by_default():
+    grid = VoxelGrid(np.eye(3) * 5.0, gpts=(5, 5, 5), dtype=np.float32)
+    grid.grid.fill(7.0)
+    analysis = VoxelGridAnalysis(grid)
+    positions = np.array([[2.5, 2.5, 2.5]])
+    radii = np.array([0.1])
+
+    small_probe = analysis.probe_accessible_mask(positions, radii, probe_radius=0.0)
+    large_probe = analysis.probe_accessible_mask(positions, radii, probe_radius=1.01)
+
+    assert np.count_nonzero(large_probe) < np.count_nonzero(small_probe)
+    assert small_probe[2, 2, 2] == np.False_
+    assert large_probe[3, 2, 2] == np.False_
+    np.testing.assert_allclose(grid.grid, np.full((5, 5, 5), 7.0))
+
+
+def test_probe_accessible_analysis_reports_regions_and_can_write_grid():
+    grid = VoxelGrid(np.eye(3) * 5.0, gpts=(5, 5, 5), dtype=np.float32)
+    analysis = VoxelGridAnalysis(grid)
+    positions = np.array([[2.5, 2.5, 2.5]])
+    radii = np.array([1.01])
+
+    result = analysis.analyze_probe_accessibility(
+        positions,
+        radii,
+        probe_radius=0.0,
+        surface_method="voxel-faces",
+        write_grid=True,
+    )
+
+    assert result.probe_radius == pytest.approx(0.0)
+    assert result.accessible_voxel_count == np.count_nonzero(result.accessible_mask)
+    assert result.accessible_volume == pytest.approx(result.accessible_voxel_count * analysis.voxel_volume)
+    assert result.accessible_surface_area > 0.0
+    assert len(result.regions) == 1
+    np.testing.assert_allclose(grid.grid, result.accessible_mask.astype(grid.dtype))
+
+
+def test_probe_accessible_analysis_rejects_invalid_inputs():
+    analysis = VoxelGridAnalysis(VoxelGrid(np.eye(3), gpts=(2, 2, 2)))
+
+    with pytest.raises(ValueError, match="positions"):
+        analysis.probe_accessible_mask([0.0, 0.0, 0.0], [1.0], probe_radius=1.0)
+    with pytest.raises(ValueError, match="radii"):
+        analysis.probe_accessible_mask([[0.0, 0.0, 0.0]], [1.0, 2.0], probe_radius=1.0)
+    with pytest.raises(ValueError, match="non-negative"):
+        analysis.probe_accessible_mask([[0.0, 0.0, 0.0]], [-1.0], probe_radius=1.0)
+    with pytest.raises(ValueError, match="probe_radius"):
+        analysis.probe_accessible_mask([[0.0, 0.0, 0.0]], [1.0], probe_radius=-1.0)

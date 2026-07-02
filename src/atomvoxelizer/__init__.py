@@ -2,7 +2,7 @@
 
 from .voxelgrid import VoxelGrid, VoxelGridNumPy
 from .vectorgrid import FieldVoxelGrid, FieldVoxelGridNumPy, VectorVoxelGrid, VectorVoxelGridNumPy
-from .analysis import VoxelGridAnalysis, VoxelRegion
+from .analysis import ProbeAccessibleResult, VoxelGridAnalysis, VoxelRegion
 
 __all__ = [
     "VoxelGrid",
@@ -16,6 +16,7 @@ __all__ = [
     "FieldVoxelGrid",
     "FieldVoxelGridNumPy",
     "FieldVoxelGridNumba",
+    "ProbeAccessibleResult",
     "VectorVoxelGrid",
     "VectorVoxelGridNumPy",
     "VectorVoxelGridNumba",

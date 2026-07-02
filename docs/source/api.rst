@@ -71,3 +71,8 @@ Analysis
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. autoclass:: atomvoxelizer.ProbeAccessibleResult
+   :members:
+   :undoc-members:
+   :show-inheritance:

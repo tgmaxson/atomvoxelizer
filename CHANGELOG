@@ -11,6 +11,8 @@ https://keepachangelog.com/en/1.1.0/
 - Added optional Numba backends for experimental field-valued grids:
   ``FieldVoxelGridNumba`` and ``VectorVoxelGridNumba``.
 - Added ASE trajectory output for the voxel-guided MC quickstart example.
+- Added probe-center accessibility analysis from supplied positions, atomic
+  radii, and probe radius.
 
 ### Changed
 - Clarified the algorithm documentation around cached sphere stencils and

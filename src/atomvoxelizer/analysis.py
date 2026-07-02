@@ -15,6 +15,18 @@ class VoxelRegion:
     surface_area: float
 
 
+@dataclass(frozen=True)
+class ProbeAccessibleResult:
+    """Probe-center accessible volume and surface summary."""
+
+    probe_radius: float
+    accessible_voxel_count: int
+    accessible_volume: float
+    accessible_surface_area: float
+    regions: list[VoxelRegion]
+    accessible_mask: np.ndarray
+
+
 class VoxelGridAnalysis:
     """Analyze connected voxel volumes and their surfaces."""
 
@@ -214,9 +226,25 @@ class VoxelGridAnalysis:
         surface_method="marching-cubes",
     ):
         """Return volume and marching-cubes area for each connected region."""
+        selected = self.mask(min_value=min_value, max_value=max_value, threshold=threshold, above=above)
+        return self.analyze_mask(
+            selected,
+            connectivity=connectivity,
+            periodic=periodic,
+            surface_method=surface_method,
+        )
+
+    def analyze_mask(
+        self,
+        selected,
+        connectivity=1,
+        periodic=True,
+        surface_method="marching-cubes",
+    ):
+        """Return volume and surface area for connected regions in a boolean mask."""
         if surface_method not in {"marching-cubes", "voxel-faces"}:
             raise ValueError("surface_method must be 'marching-cubes' or 'voxel-faces'")
-        selected = self.mask(min_value=min_value, max_value=max_value, threshold=threshold, above=above)
+        selected = np.asarray(selected, dtype=bool)
         labels, label_count = self.connected_components(selected, connectivity=connectivity, periodic=periodic)
 
         regions = []
@@ -237,6 +265,66 @@ class VoxelGridAnalysis:
             )
         return regions
 
+    def probe_accessible_mask(self, positions, radii, probe_radius, write_grid=False):
+        """Return voxels accessible to the center of a spherical probe.
+
+        ``positions`` must have shape ``(N, 3)`` and ``radii`` must contain one
+        atom radius per position. A voxel is accessible when a probe center at
+        that voxel does not overlap any atom, so atoms are excluded with radius
+        ``radii + probe_radius``.
+
+        The input voxel grid is used as the geometry template. By default, the
+        existing grid values are not modified. Set ``write_grid=True`` to store
+        the binary accessible mask in ``self.voxel_grid.grid`` as 1 for
+        accessible voxels and 0 for excluded voxels.
+        """
+        positions, radii = self._validate_probe_inputs(positions, radii, probe_radius)
+
+        from .voxelgrid import VoxelGrid
+
+        work_grid = VoxelGrid(self.cell, gpts=self.gpts, dtype=np.uint8)
+        work_grid.grid.fill(1)
+        work_grid.set_spheres(positions, radii + float(probe_radius), value=0)
+        accessible = work_grid.grid.astype(bool, copy=True)
+        if write_grid:
+            self.voxel_grid.grid[...] = accessible.astype(self.voxel_grid.dtype, copy=False)
+        return accessible
+
+    def analyze_probe_accessibility(
+        self,
+        positions,
+        radii,
+        probe_radius,
+        connectivity=1,
+        periodic=True,
+        surface_method="voxel-faces",
+        write_grid=False,
+    ):
+        """Analyze probe-center accessible volume and surface area.
+
+        This is a probe-center analysis: atom exclusion radii are inflated by
+        ``probe_radius`` and accessible voxels are positions where the probe
+        center fits. Volumes therefore describe the region available to the
+        probe center. Surface areas describe the boundary of that accessible
+        center region.
+        """
+        accessible = self.probe_accessible_mask(positions, radii, probe_radius, write_grid=write_grid)
+        regions = self.analyze_mask(
+            accessible,
+            connectivity=connectivity,
+            periodic=periodic,
+            surface_method=surface_method,
+        )
+        accessible_voxel_count = int(np.count_nonzero(accessible))
+        return ProbeAccessibleResult(
+            probe_radius=float(probe_radius),
+            accessible_voxel_count=accessible_voxel_count,
+            accessible_volume=accessible_voxel_count * self.voxel_volume,
+            accessible_surface_area=sum(region.surface_area for region in regions),
+            regions=regions,
+            accessible_mask=accessible,
+        )
+
     @staticmethod
     def volume_angstrom3_to_cm3_per_g(volume_angstrom3, mass_amu):
         """Convert a cell/supercell volume from Angstrom^3 to cm^3/g."""
@@ -252,6 +340,21 @@ class VoxelGridAnalysis:
             raise ValueError("mass_amu must be positive")
         mass_g = float(mass_amu) * 1.66053906660e-24
         return float(area_angstrom2) * 1.0e-20 / mass_g
+
+    @staticmethod
+    def _validate_probe_inputs(positions, radii, probe_radius):
+        positions = np.asarray(positions, dtype=np.float64)
+        radii = np.asarray(radii, dtype=np.float64)
+        probe_radius = float(probe_radius)
+        if positions.ndim != 2 or positions.shape[1] != 3:
+            raise ValueError("positions must have shape (N, 3)")
+        if radii.ndim != 1 or radii.shape[0] != positions.shape[0]:
+            raise ValueError("radii must have shape (N,)")
+        if np.any(radii < 0.0):
+            raise ValueError("radii must be non-negative")
+        if probe_radius < 0.0:
+            raise ValueError("probe_radius must be non-negative")
+        return positions, radii
 
     def _index_vertices_to_real(self, vertices):
         frac = vertices / self.gpts
@@ -374,4 +477,4 @@ class VoxelGridAnalysis:
         return VoxelGridAnalysis._mesh_surface_area(np.asarray(vertices), np.asarray(faces, dtype=int))
 
 
-__all__ = ["VoxelGridAnalysis", "VoxelRegion"]
+__all__ = ["ProbeAccessibleResult", "VoxelGridAnalysis", "VoxelRegion"]
