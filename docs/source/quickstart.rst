@@ -161,8 +161,10 @@ Run the EMT tutorial example with:
 
 .. code-block:: bash
 
-   python examples/mc/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 --steps 50 \
-       --plot quickstart_wulff_mc_sites.png
+   python examples/mc/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 \
+       --steps 250 --score emt --temperature 0.2 \
+       --plot quickstart_wulff_mc_sites.png \
+       --state-plot docs/source/_static/quickstart_wulff_mc_initial_final.png
 
 The script prints the accepted move count, acceptance ratio, initial/final
 radial variance, and mean/max displacement from the starting structure so you
@@ -172,6 +174,14 @@ trajectory by default:
 .. code-block:: text
 
    examples/mc/orb_v3_wulff_mc.traj
+
+The image below was generated from a 250-step EMT run. The accepted moves lower
+the radial variance from ``3.386237`` to ``3.102322`` for this deterministic
+seed.
+
+.. image:: _static/quickstart_wulff_mc_initial_final.png
+   :alt: Initial and final ASE-rendered nanoparticle states after 250 EMT MC steps
+   :width: 95%
 
 Open it with ASE to inspect the MC path:
 

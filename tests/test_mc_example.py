@@ -98,3 +98,21 @@ def test_minimal_mc_can_write_ase_trajectory(tmp_path):
     assert loaded[0].info["mc_step"] == -1
     assert loaded[-1].info["mc_step"] == 4
     assert "mc_accepted" in loaded[-1].info
+
+
+def test_initial_final_state_plot_is_written(tmp_path):
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    initial = ase.Atoms(
+        "Pt2",
+        positions=np.array([[5.0, 5.0, 5.0], [7.0, 5.0, 5.0]]),
+        cell=np.eye(3) * 12.0,
+    )
+    final = initial.copy()
+    final.positions[1] += np.array([0.2, 0.1, 0.0])
+
+    output = example.plot_initial_final_states(initial, final, tmp_path / "states.png")
+
+    assert output.exists()
+    assert output.stat().st_size > 0

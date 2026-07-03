@@ -249,6 +249,25 @@ def plot_trial_sites(atoms, trial_sites, output):
     return output
 
 
+def plot_initial_final_states(initial_atoms, final_atoms, output):
+    """Render initial and final ASE structures side by side."""
+    import matplotlib.pyplot as plt
+    from ase.visualize.plot import plot_atoms
+
+    fig, axes = plt.subplots(1, 2, figsize=(8.0, 4.0), constrained_layout=True)
+    for ax, atoms, title in zip(axes, (initial_atoms, final_atoms), ("Initial", "Final")):
+        plot_atoms(atoms, ax, rotation="12x,18y,0z", radii=0.78)
+        ax.set_title(title)
+        ax.set_axis_off()
+        ax.set_aspect("equal")
+
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output, dpi=220)
+    plt.close(fig)
+    return output
+
+
 def main():
     parser = argparse.ArgumentParser(description="Voxel-guided MC trial moves for a Wulff nanoparticle.")
     parser.add_argument("--symbol", default="Pt")
@@ -262,6 +281,7 @@ def main():
     parser.add_argument("--score", choices=("emt", "orb-v3"), default="emt")
     parser.add_argument("--device", default="cpu", help="Device passed to ORB-V3 when --score orb-v3 is used.")
     parser.add_argument("--plot", default=None, help="Optional path for a 3D plot of atoms and trial sites.")
+    parser.add_argument("--state-plot", default=None, help="Optional path for an ASE initial/final state plot.")
     parser.add_argument(
         "--trajectory",
         default=str(Path(__file__).with_name("orb_v3_wulff_mc.traj")),
@@ -270,6 +290,7 @@ def main():
     args = parser.parse_args()
 
     atoms = put_cluster_in_voxel_cell(build_wulff_nanoparticle(args.symbol, args.natoms, shape=args.shape))
+    initial_atoms = atoms.copy()
     initial_positions = atoms.positions.copy()
     initial_radial_variance = radial_variance(atoms)
     grid = build_coordination_surface_grid(atoms, resolution=args.resolution)
@@ -309,6 +330,8 @@ def main():
         print(f"trajectory: {write_mc_trajectory(frames, args.trajectory)}")
     if args.plot:
         print(f"plot: {plot_trial_sites(atoms, trial_sites, args.plot)}")
+    if args.state_plot:
+        print(f"state plot: {plot_initial_final_states(initial_atoms, atoms, args.state_plot)}")
 
 
 if __name__ == "__main__":

@@ -16,6 +16,23 @@ https://keepachangelog.com/en/1.1.0/
 ### Fixed
 - None.
 
+## [0.2.11] - 2026-07-02
+
+### Added
+- Added GitLab CI coverage reporting with pytest-cov terminal output and a
+  Cobertura ``coverage.xml`` report artifact.
+- Added an ASE-rendered initial/final nanoparticle state image for the
+  voxel-guided MC quickstart.
+- Added ``--state-plot`` to ``examples/mc/orb_v3_wulff_mc.py``.
+
+### Changed
+- Replaced the quickstart MC geometric placeholder score with ASE EMT as the
+  default scorer.
+- Consolidated documentation pages into a simpler navigation structure while
+  keeping lightweight compatibility pages for older documentation URLs.
+- Fixed the ORB-V3 quickstart scorer so the conservative model can use
+  autograd during prediction.
+
 ## [0.2.10] - 2026-07-02
 
 ### Added
