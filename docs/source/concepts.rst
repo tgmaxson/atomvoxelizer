@@ -24,6 +24,15 @@ AtomVoxelizer instead loops over atoms and visits only the local stencil around
 each atom. For fixed radius and resolution, that stencil size is roughly
 constant, so sphere painting scales approximately as ``O(N_atoms)``.
 
+The same idea is shown below in two dimensions. A sphere mask selects local
+voxel centers, the selected offsets are cached as a stencil, and the stencil is
+reused for later atoms. When offsets leave the primary cell, periodic wrapping
+places those cells on the opposite side of the grid.
+
+.. image:: _static/stencil_schematic_2d.png
+   :alt: Two-dimensional schematic of local voxel stenciling and periodic wrapping
+   :width: 100%
+
 Sphere Operations And Masks
 ---------------------------
 
