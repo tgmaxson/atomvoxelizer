@@ -7,6 +7,12 @@ runs a simple CO adsorption/desorption MCMD loop. The runnable example defaults
 to ORB-V3 on CPU with the conservative infinite-neighbor model. ASE EMT is kept
 as a fast fallback for testing the mechanics of the workflow.
 
+The goal of this tutorial is to show how a voxel surface mask can drive trial
+move generation. The ORB-V3 settings used here are convenient for a compact
+demonstration, but the output should be treated as qualitative unless the
+calculator, chemical potential, sampling length, and adsorption model have been
+validated for the system being studied.
+
 The complete script is available at
 ``examples/mc/orb_v3_co_mcmd.py``.
 
@@ -173,6 +179,12 @@ Run a short ORB-V3 CPU MCMD example with:
 To regenerate the same documentation figures on a GPU, change ``--device cpu``
 to ``--device cuda``.
 
+The figures shown below were generated from a longer GPU run so that adsorption,
+desorption, and MD propagation are all visible. They are intended to demonstrate
+the AtomVoxelizer workflow rather than to report a converged ORB-V3 prediction
+for CO/Pt adsorption. In particular, the general ORB-V3 model can place some CO
+in weakly bound or desorbed configurations during this compact tutorial run.
+
 For a quick mechanics check without ORB, pass ``--calculator emt --steps 5
 --md-steps 1``. EMT is not intended to be a chemically meaningful CO/Pt model
 here; it is just useful for checking the control flow.
@@ -185,7 +197,9 @@ writes an ASE trajectory by default:
 
    examples/mc/orb_v3_co_mcmd.traj
 
-The image below shows the final nanoparticle state from the MCMD run.
+The image below shows the final nanoparticle state from the MCMD run, including
+CO molecules that remain near the nanoparticle and CO molecules that have moved
+into the padded finite-cell region.
 
 .. image:: _static/quickstart_co_mcmd_final.png
    :alt: Final ASE-rendered nanoparticle state after voxel-guided CO MCMD

@@ -123,7 +123,9 @@ sites, and runs CO adsorption/desorption MCMD. The default calculator is the
 conservative ORB-V3 infinite-neighbor model on CPU. ASE EMT is available with
 ``--calculator emt`` for quick control-flow checks. Coverage is counted as
 ``N_CO / N_surface_atoms`` and adsorption is capped by ``--max-coverage`` so the
-number of sampled voxel sites does not define the maximum CO loading.
+number of sampled voxel sites does not define the maximum CO loading. This is a
+workflow demonstration; the ORB-V3 tutorial settings are not presented as a
+validated CO/Pt adsorption model.
 
 .. code-block:: bash
 
