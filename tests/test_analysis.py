@@ -46,7 +46,13 @@ def test_experimental_unit_conversions():
 
 
 def test_mask_rejects_mixed_threshold_and_range():
-    analysis = VoxelGridAnalysis(VoxelGrid(np.eye(3), gpts=(1, 1, 1)))
+    grid = VoxelGrid(np.eye(3), gpts=(2, 2, 2))
+    grid.grid[0, 0, 0] = -1.0
+    grid.grid[1, 1, 1] = 2.0
+    analysis = VoxelGridAnalysis(grid)
+
+    assert np.count_nonzero(analysis.mask(min_value=0.0, max_value=1.0)) == 6
+    assert np.count_nonzero(analysis.mask(threshold=0.0, above=False)) == 1
 
     with pytest.raises(ValueError, match="threshold"):
         analysis.mask(threshold=0.5, min_value=0.0)
@@ -68,8 +74,10 @@ def test_connected_components_merge_periodic_boundaries():
 def test_periodic_surface_area_removes_cell_boundary_surface_for_full_mask():
     grid = VoxelGrid(np.eye(3) * 4.0, gpts=(4, 4, 4))
     selected = np.ones(grid.grid.shape, dtype=bool)
+    empty = np.zeros(grid.grid.shape, dtype=bool)
     analysis = VoxelGridAnalysis(grid)
 
+    assert analysis.surface_area(empty, periodic=True) == pytest.approx(0.0)
     assert analysis.surface_area(selected, periodic=True) == pytest.approx(0.0)
     assert analysis.surface_area(selected, periodic=False) > 0.0
 
@@ -80,6 +88,8 @@ def test_voxel_face_surface_area_counts_exposed_faces():
     selected[1:3, 1:3, 1:3] = True
     analysis = VoxelGridAnalysis(grid)
 
+    assert analysis.surface_area_voxel_faces(np.zeros_like(selected), periodic=True) == pytest.approx(0.0)
+    assert analysis.surface_area_voxel_faces(np.ones_like(selected), periodic=True) == pytest.approx(0.0)
     assert analysis.surface_area_voxel_faces(selected, periodic=True) == pytest.approx(24.0)
     assert analysis.surface_area_voxel_faces(selected, periodic=False) == pytest.approx(24.0)
 
@@ -95,6 +105,50 @@ def test_analyze_regions_supports_voxel_face_surface_method():
 
     with pytest.raises(ValueError, match="surface_method"):
         VoxelGridAnalysis(grid).analyze_regions(threshold=0.5, surface_method="bad")
+
+
+def test_mesh_helpers_handle_invalid_levels_infinite_values_and_clipping():
+    grid = VoxelGrid(np.eye(3) * 4.0, gpts=(4, 4, 4))
+    analysis = VoxelGridAnalysis(grid)
+
+    with pytest.raises(ValueError, match="level"):
+        analysis.mesh_at_value(level=0.5)
+
+    grid.grid.fill(np.inf)
+    assert np.isinf(analysis._finite_grid_for_level(0.5)).all()
+
+    grid.grid.fill(1.0)
+    grid.grid[1:3, 1:3, 1:3] = 0.0
+    vertices, faces = analysis.mesh_at_value(level=0.5, periodic=False)
+    assert vertices.shape[1] == 3
+    assert faces.shape[1] == 3
+    assert analysis.surface_area_at_value(level=0.5, periodic=False) > 0.0
+
+    raw_vertices = np.array([[-1.0, 0.5, 0.5], [2.0, 0.5, 0.5], [0.5, 2.0, 0.5]])
+    raw_faces = np.array([[0, 1, 2]])
+    clipped_vertices, clipped_faces = analysis._clip_mesh_to_index_cell(raw_vertices, raw_faces)
+    assert clipped_vertices.shape[1] == 3
+    assert clipped_faces.shape[1] == 3
+
+    outside_vertices = np.array([[-2.0, 0.5, 0.5], [-1.0, 1.0, 0.5], [-1.0, 0.5, 1.0]])
+    empty_vertices, empty_faces = analysis._clip_mesh_to_index_cell(outside_vertices, raw_faces)
+    assert empty_vertices.size == 0
+    assert empty_faces.size == 0
+
+    assert analysis._clip_polygon_axis([], axis=0, boundary=0.0, keep_greater=True) == []
+    assert VoxelGridAnalysis.mesh_surface_area(
+        np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+        np.array([[0, 1, 2]]),
+    ) == pytest.approx(0.5)
+
+
+def test_periodic_label_merge_returns_empty_labels_unchanged():
+    labels = np.zeros((2, 2, 2), dtype=int)
+    selected = np.zeros_like(labels, dtype=bool)
+
+    merged = VoxelGridAnalysis._merge_periodic_labels(labels, selected)
+
+    np.testing.assert_array_equal(merged, labels)
 
 
 def test_probe_accessible_mask_inflates_atom_radii_without_mutating_grid_by_default():

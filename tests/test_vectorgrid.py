@@ -40,6 +40,11 @@ def test_field_grid_supports_matrix_values():
     assert normalized.shape == grid.grid.shape
     assert np.linalg.norm(normalized[1, 1, 1]) == pytest.approx(1.0)
 
+    nonzero_factor = np.full((2, 2), 2.0)
+    grid.mul_spheres([[1.5, 1.5, 1.5]], [0.1], factor=nonzero_factor)
+    grid.div_spheres([[1.5, 1.5, 1.5]], [0.1], factor=nonzero_factor)
+    np.testing.assert_allclose(grid.vector_norms(), grid.value_norms())
+
 
 def test_vector_grid_initialization_and_constant_mask():
     grid = VectorVoxelGrid(np.eye(3) * 4.0, gpts=(4, 4, 4), dtype=np.float64)
@@ -104,6 +109,9 @@ def test_quiver_slice_data_prepares_2d_vectors_without_plotting():
     assert len(data["u"]) == len(data["x"])
     assert set(np.round(data["norm"], 6)) == {1.0}
 
+    empty = grid.quiver_slice_data(axis="z", index=0, min_norm=10.0, normalize=True)
+    assert len(empty["x"]) == 0
+
 
 def test_quiver_3d_data_samples_and_normalizes_vectors_without_plotting():
     grid = VectorVoxelGrid(np.eye(3) * 5.0, gpts=(5, 5, 5))
@@ -113,6 +121,39 @@ def test_quiver_3d_data_samples_and_normalizes_vectors_without_plotting():
     assert len(data["x"]) == 6
     norms = np.linalg.norm(np.column_stack([data["u"], data["v"], data["w"]]), axis=1)
     np.testing.assert_allclose(norms, np.ones(6))
+
+    empty = grid.quiver_3d_data(stride=1, min_norm=10.0, normalize=True)
+    assert len(empty["x"]) == 0
+
+
+def test_quiver_plot_helpers_render_with_supplied_and_created_axes(monkeypatch):
+    import matplotlib
+
+    matplotlib.use("Agg", force=True)
+    import matplotlib.pyplot as plt
+
+    grid = VectorVoxelGrid(np.eye(3) * 5.0, gpts=(5, 5, 5))
+    grid.set_sphere([2.5, 2.5, 2.5], radius=1.01, mask="normal")
+    monkeypatch.setattr(plt, "show", lambda: None)
+
+    fig, ax = plt.subplots()
+    returned = grid.plot_quiver_slice(axis="z", index=2, min_norm=0.1, normalize=True, ax=ax, scale=1.0)
+    assert returned is ax
+    plt.close(fig)
+
+    created_ax = grid.plot_quiver_slice(axis="z", index=2, min_norm=0.1)
+    assert created_ax.get_title() == "z slice 2"
+    plt.close(created_ax.figure)
+
+    fig = plt.figure()
+    ax3d = fig.add_subplot(projection="3d")
+    returned_3d = grid.plot_quiver_3D(stride=1, min_norm=0.1, normalize=True, ax=ax3d, length=0.5)
+    assert returned_3d is ax3d
+    plt.close(fig)
+
+    created_3d = grid.plot_quiver_3D(stride=1, min_norm=0.1)
+    assert created_3d.get_xlabel() == "x"
+    plt.close(created_3d.figure)
 
 
 def test_field_grid_rejects_unsupported_shapes_and_masks():
@@ -135,8 +176,18 @@ def test_field_grid_rejects_unsupported_shapes_and_masks():
         grid.quiver_3d_data()
     with pytest.raises(ValueError, match="axis"):
         VectorVoxelGrid(np.eye(3), gpts=(2, 2, 2)).quiver_slice_data(axis="bad")
+    with pytest.raises(ValueError, match="either"):
+        VectorVoxelGrid(np.eye(3), gpts=(2, 2, 2)).quiver_slice_data(index=0, position=0.0)
+    with pytest.raises(IndexError, match="out of bounds"):
+        VectorVoxelGrid(np.eye(3), gpts=(2, 2, 2)).quiver_slice_data(axis="z", index=9)
+    with pytest.raises(ValueError, match="stride"):
+        VectorVoxelGrid(np.eye(3), gpts=(2, 2, 2)).quiver_3d_data(stride=0)
     with pytest.raises(NotImplementedError, match="min_sphere"):
         grid.min_sphere([0.5, 0.5, 0.5], radius=0.1)
+    with pytest.raises(NotImplementedError, match="min_spheres"):
+        grid.min_spheres([[0.5, 0.5, 0.5]], [0.1])
+    with pytest.raises(NotImplementedError, match="sample_voxels"):
+        grid.sample_voxels_in_range()
     with pytest.raises(NotImplementedError, match="clamp_grid"):
         grid.clamp_grid()
     with pytest.raises(NotImplementedError, match="plot_2D"):

@@ -16,6 +16,17 @@ https://keepachangelog.com/en/1.1.0/
 ### Fixed
 - None.
 
+## [0.2.13] - 2026-07-03
+
+### Added
+- Expanded pytest coverage for NumPy voxel-grid arithmetic, plotting helpers,
+  analysis edge cases, lazy imports, vector-field plotting, and Numba backend
+  equivalence.
+
+### Fixed
+- Matched Numba distance-mask division behavior to NumPy for zero-distance
+  center voxels in real-valued grids.
+
 ## [0.2.12] - 2026-07-03
 
 ### Changed

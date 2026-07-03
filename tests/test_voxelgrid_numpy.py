@@ -140,3 +140,90 @@ def test_sample_voxels_in_range_is_seeded_and_validates():
 
     with pytest.raises(ValueError, match="min_dist"):
         list(grid.sample_voxels_in_range(1.0, 1.0, return_indices=True, min_dist=1.0))
+
+
+def test_batched_arithmetic_operations_match_repeated_single_spheres():
+    cell = np.eye(3) * 5.0
+    centers = np.array([[1.2, 1.3, 1.4], [3.8, 3.7, 3.6]])
+    radii = np.array([1.1, 0.9])
+
+    for operation, keyword, value, fill in [
+        ("mul_spheres", "factor", 2.0, 3.0),
+        ("div_spheres", "factor", 2.0, 8.0),
+        ("min_spheres", "value", 1.0, 5.0),
+    ]:
+        batched = VoxelGridNumPy(cell, gpts=(5, 5, 5))
+        repeated = VoxelGridNumPy(cell, gpts=(5, 5, 5))
+        batched.grid.fill(fill)
+        repeated.grid.fill(fill)
+
+        getattr(batched, operation)(centers, radii, mask="constant", **{keyword: value})
+        single_operation = operation.replace("_spheres", "_sphere")
+        for center, radius in zip(centers, radii):
+            getattr(repeated, single_operation)(center, radius, mask="constant", **{keyword: value})
+
+        np.testing.assert_allclose(batched.grid, repeated.grid)
+
+
+def test_distance_mask_arithmetic_has_expected_center_and_neighbor_values():
+    grid = VoxelGridNumPy(np.eye(3) * 5.0, gpts=(5, 5, 5))
+    center = np.array([2.5, 2.5, 2.5])
+
+    grid.set_sphere(center, radius=1.01, value=2.0, mask="distance")
+    assert grid.grid[2, 2, 2] == pytest.approx(0.0)
+    assert grid.grid[3, 2, 2] == pytest.approx(2.0)
+
+    grid.grid.fill(1.0)
+    grid.add_sphere(center, radius=1.01, value=0.5, mask="distance")
+    assert grid.grid[2, 2, 2] == pytest.approx(1.0)
+    assert grid.grid[3, 2, 2] == pytest.approx(1.5)
+
+    grid.grid.fill(2.0)
+    grid.mul_sphere(center, radius=1.01, factor=0.5, mask="distance")
+    assert grid.grid[3, 2, 2] == pytest.approx(1.0)
+
+
+def test_sample_voxels_in_range_min_dist_filters_positions():
+    grid = VoxelGridNumPy(np.eye(3) * 4.0, gpts=(4, 4, 4))
+    grid.grid[0, 0, 0] = 1.0
+    grid.grid[0, 0, 1] = 1.0
+
+    samples = list(grid.sample_voxels_in_range(1.0, 1.0, min_dist=1.1, seed=4))
+    assert len(samples) == 1
+    assert samples[0].shape == (3,)
+
+
+def test_plot_2d_validates_slice_arguments_and_can_render(monkeypatch):
+    import matplotlib
+
+    matplotlib.use("Agg", force=True)
+    import matplotlib.pyplot as plt
+
+    grid = VoxelGridNumPy(np.eye(3) * 4.0, gpts=(4, 4, 4))
+    grid.grid[1, 2, 3] = 1.0
+    monkeypatch.setattr(plt, "show", lambda: None)
+
+    grid.plot_2D(axis="z", index=3, threshold=0.5, real_space=False, draw_cell=False)
+    grid.plot_2D(axis="x", position=1.5, threshold=0.5)
+
+    with pytest.raises(ValueError, match="Axis"):
+        grid.plot_2D(axis="bad")
+    with pytest.raises(ValueError, match="either"):
+        grid.plot_2D(index=1, position=1.0)
+    with pytest.raises(IndexError, match="out of bounds"):
+        grid.plot_2D(axis="z", index=99)
+
+
+def test_plot_3d_can_render_with_and_without_cell(monkeypatch):
+    import matplotlib
+
+    matplotlib.use("Agg", force=True)
+    import matplotlib.pyplot as plt
+
+    grid = VoxelGridNumPy(np.eye(3) * 4.0, gpts=(4, 4, 4))
+    grid.grid[1, 1, 1] = 1.0
+    grid.grid[2, 2, 2] = 2.0
+    monkeypatch.setattr(plt, "show", lambda: None)
+
+    grid.plot_3D(threshold=0.5, draw_cell=True)
+    grid.plot_3D(threshold=0.5, draw_cell=False)

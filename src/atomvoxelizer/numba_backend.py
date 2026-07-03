@@ -82,7 +82,17 @@ def _div_sphere_distance_offsets_flat(grid, center_idx, offsets, distances, scal
         x = (center_idx[0] + offsets[n, 0]) % nx
         y = (center_idx[1] + offsets[n, 1]) % ny
         z = (center_idx[2] + offsets[n, 2]) % nz
-        grid[(x * ny + y) * nz + z] /= distances[n] * scale
+        flat = (x * ny + y) * nz + z
+        divisor = distances[n] * scale
+        if divisor == 0.0:
+            if grid[flat] == 0.0:
+                grid[flat] = np.nan
+            elif grid[flat] > 0.0:
+                grid[flat] = np.inf
+            else:
+                grid[flat] = -np.inf
+        else:
+            grid[flat] /= divisor
 
 
 @njit
@@ -224,7 +234,17 @@ def _div_many_sphere_distance_offsets_flat(grid, center_indices, offsets, distan
             x = (cx + offsets[n, 0]) % nx
             y = (cy + offsets[n, 1]) % ny
             z = (cz + offsets[n, 2]) % nz
-            grid[(x * ny + y) * nz + z] /= distances[n] * scale
+            flat = (x * ny + y) * nz + z
+            divisor = distances[n] * scale
+            if divisor == 0.0:
+                if grid[flat] == 0.0:
+                    grid[flat] = np.nan
+                elif grid[flat] > 0.0:
+                    grid[flat] = np.inf
+                else:
+                    grid[flat] = -np.inf
+            else:
+                grid[flat] /= divisor
 
 
 @njit
