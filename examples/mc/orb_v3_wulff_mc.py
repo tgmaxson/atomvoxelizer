@@ -97,23 +97,33 @@ def radial_variance(atoms):
     return float(np.var(distances))
 
 
-def make_emt_score():
-    """Create an ASE EMT potential-energy scorer."""
+def make_emt_calculator():
+    """Create an ASE EMT calculator."""
     try:
         from ase.calculators.emt import EMT
     except ImportError as exc:
         raise SystemExit("EMT scoring requires ASE. Install ASE before running this example.") from exc
 
+    return EMT()
+
+
+def make_calculator_score(calculator):
+    """Create a potential-energy scorer from an ASE calculator."""
+
     def score(atoms):
-        if atoms.calc is None or not isinstance(atoms.calc, EMT):
-            atoms.calc = EMT()
+        atoms.calc = calculator
         return float(atoms.get_potential_energy())
 
     return score
 
 
-def make_orb_v3_score(device="cpu"):
-    """Create an ORB-V3 ASE-calculator energy scorer when ORB models are installed."""
+def make_emt_score():
+    """Create an ASE EMT potential-energy scorer."""
+    return make_calculator_score(make_emt_calculator())
+
+
+def make_orb_v3_calculator(device="cpu"):
+    """Create an ORB-V3 ASE calculator when ORB models are installed."""
     try:
         from orb_models.forcefield import pretrained
         from orb_models.forcefield.inference.calculator import ORBCalculator
@@ -125,13 +135,22 @@ def make_orb_v3_score(device="cpu"):
 
     model, adapter = pretrained.orb_v3_conservative_inf_omat(device=device)
     model.eval()
-    calculator = ORBCalculator(model, adapter, device=device)
+    return ORBCalculator(model, adapter, device=device)
 
-    def score(atoms):
-        atoms.calc = calculator
-        return float(atoms.get_potential_energy())
 
-    return score
+def make_orb_v3_score(device="cpu"):
+    """Create an ORB-V3 ASE-calculator energy scorer when ORB models are installed."""
+    return make_calculator_score(make_orb_v3_calculator(device=device))
+
+
+def relax_atoms(atoms, calculator, fmax=0.05, steps=50):
+    """Relax atoms with an ASE optimizer and return the relaxed potential energy."""
+    from ase.optimize import FIRE
+
+    atoms.calc = calculator
+    optimizer = FIRE(atoms, logfile=None)
+    optimizer.run(fmax=fmax, steps=steps)
+    return float(atoms.get_potential_energy())
 
 
 def run_minimal_mc(
@@ -141,21 +160,37 @@ def run_minimal_mc(
     temperature=900.0,
     max_displacement=0.35,
     local_trial_radius=3.0,
+    relax=True,
+    relax_fmax=0.05,
+    relax_steps=50,
     seed=11,
     score_fn=None,
+    calculator=None,
     return_frames=False,
+    progress_every=0,
 ):
-    """Run a tiny Metropolis loop using voxel-sampled trial directions."""
+    """Run a Metropolis loop using voxel-sampled trial directions."""
     rng = np.random.default_rng(seed)
-    score_fn = make_emt_score() if score_fn is None else score_fn
+    if calculator is None and score_fn is None:
+        calculator = make_emt_calculator()
+    if score_fn is None:
+        score_fn = make_calculator_score(calculator)
+    if relax and calculator is None:
+        raise ValueError("relax=True requires an ASE calculator")
+
     movable = outer_atom_indices(atoms)
-    current_score = score_fn(atoms)
     accepted = 0
     trajectory = []
     frames = []
     if temperature <= 0.0:
         raise ValueError("temperature must be positive")
     beta = 1.0 / (KB_EV_PER_K * temperature)
+
+    if relax:
+        current_score = relax_atoms(atoms, calculator, fmax=relax_fmax, steps=relax_steps)
+    else:
+        current_score = score_fn(atoms)
+
     if return_frames:
         initial = atoms.copy()
         initial.info.update(
@@ -172,6 +207,7 @@ def run_minimal_mc(
 
     for step in range(steps):
         atom_index = int(rng.choice(movable))
+        old_positions = atoms.positions.copy()
         old_position = atoms.positions[atom_index].copy()
         if local_trial_radius > 0.0:
             trial_distances = np.linalg.norm(trial_sites - old_position, axis=1)
@@ -187,17 +223,29 @@ def run_minimal_mc(
             direction *= max_displacement / distance
         atoms.positions[atom_index] = old_position + direction
 
-        trial_score = score_fn(atoms)
+        if relax:
+            trial_score = relax_atoms(atoms, calculator, fmax=relax_fmax, steps=relax_steps)
+        else:
+            trial_score = score_fn(atoms)
         delta = trial_score - current_score
         accept = delta <= 0.0 or rng.random() < math.exp(-beta * delta)
         if accept:
             current_score = trial_score
             accepted += 1
         else:
-            atoms.positions[atom_index] = old_position
+            atoms.positions = old_positions
 
         acceptance_ratio = accepted / (step + 1)
         trajectory.append((step, atom_index, current_score, acceptance_ratio, float(accept)))
+        if progress_every > 0 and ((step + 1) % progress_every == 0 or step == steps - 1):
+            print(
+                f"step {step + 1}/{steps}: "
+                f"accepted={accepted}, "
+                f"acceptance={acceptance_ratio:.3f}, "
+                f"score={current_score:.6f}, "
+                f"radial_variance={radial_variance(atoms):.6f}",
+                flush=True,
+            )
         if return_frames:
             frame = atoms.copy()
             frame.info.update(
@@ -246,46 +294,27 @@ def plot_trial_sites(atoms, trial_sites, output):
     return output
 
 
-def plot_initial_final_states(initial_atoms, final_atoms, output):
-    """Render initial and final ASE structures side by side."""
+def plot_final_state(atoms, output):
+    """Render the final ASE structure."""
     import matplotlib.pyplot as plt
-    from matplotlib import cm, colors
     from ase.visualize.plot import plot_atoms
 
-    fig, axes = plt.subplots(1, 2, figsize=(8.0, 4.0), constrained_layout=True)
-    displacements = np.linalg.norm(final_atoms.positions - initial_atoms.positions, axis=1)
-    vmax = max(float(displacements.max()), 1e-12)
-    norm = colors.Normalize(vmin=0.0, vmax=vmax)
-    cmap = plt.get_cmap("viridis")
-    final_colors = [cmap(norm(value)) for value in displacements]
-
-    plot_atoms(initial_atoms, axes[0], rotation="12x,18y,0z", radii=0.78, show_unit_cell=0)
-    axes[0].set_title("Initial")
-
-    plot_atoms(
-        final_atoms,
-        axes[1],
-        rotation="12x,18y,0z",
-        radii=0.78,
-        show_unit_cell=0,
-        colors=final_colors,
-    )
-    axes[1].set_title("Final, colored by displacement")
-
-    for ax in axes:
-        ax.set_axis_off()
-        ax.set_aspect("equal")
-
-    scalar_map = cm.ScalarMappable(norm=norm, cmap=cmap)
-    scalar_map.set_array([])
-    colorbar = fig.colorbar(scalar_map, ax=axes, shrink=0.75, pad=0.02)
-    colorbar.set_label("displacement [A]")
+    fig, ax = plt.subplots(figsize=(5.6, 5.0), constrained_layout=True)
+    plot_atoms(atoms, ax, rotation="12x,18y,0z", radii=0.78, show_unit_cell=0)
+    ax.set_title("Final relaxed MC state")
+    ax.set_axis_off()
+    ax.set_aspect("equal")
 
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=220)
     plt.close(fig)
     return output
+
+
+def plot_initial_final_states(initial_atoms, final_atoms, output):
+    """Backward-compatible wrapper that now renders only the final state."""
+    return plot_final_state(final_atoms, output)
 
 
 def main():
@@ -307,6 +336,9 @@ def main():
         help="Metropolis temperature in Kelvin.",
     )
     parser.add_argument("--max-displacement", type=float, default=0.35)
+    parser.add_argument("--no-relax", action="store_true", help="Disable relaxation before scoring MC states.")
+    parser.add_argument("--relax-fmax", type=float, default=0.05, help="Optimizer force threshold in eV/A.")
+    parser.add_argument("--relax-steps", type=int, default=50, help="Maximum optimizer steps per MC state.")
     parser.add_argument(
         "--local-trial-radius",
         type=float,
@@ -314,10 +346,11 @@ def main():
         help="Choose voxel trial sites within this distance of the selected atom. Use 0 for global sampling.",
     )
     parser.add_argument("--seed", type=int, default=11)
+    parser.add_argument("--progress-every", type=int, default=50, help="Print MC progress every N steps. Use 0 to disable.")
     parser.add_argument("--score", choices=("emt", "orb-v3"), default="emt")
     parser.add_argument("--device", default="cpu", help="Device passed to ORB-V3 when --score orb-v3 is used.")
     parser.add_argument("--plot", default=None, help="Optional path for a 3D plot of atoms and trial sites.")
-    parser.add_argument("--state-plot", default=None, help="Optional path for an ASE initial/final state plot.")
+    parser.add_argument("--state-plot", default=None, help="Optional path for an ASE final-state plot.")
     parser.add_argument(
         "--trajectory",
         default=str(Path(__file__).with_name("orb_v3_wulff_mc.traj")),
@@ -326,7 +359,6 @@ def main():
     args = parser.parse_args()
 
     atoms = put_cluster_in_voxel_cell(build_wulff_nanoparticle(args.symbol, args.natoms, shape=args.shape))
-    initial_atoms = atoms.copy()
     initial_positions = atoms.positions.copy()
     initial_radial_variance = radial_variance(atoms)
     grid = build_coordination_surface_grid(
@@ -343,9 +375,9 @@ def main():
         seed=args.seed,
     )
     if args.score == "orb-v3":
-        score_fn = make_orb_v3_score(args.device)
+        calculator = make_orb_v3_calculator(args.device)
     else:
-        score_fn = make_emt_score()
+        calculator = make_emt_calculator()
     mc_result = run_minimal_mc(
         atoms,
         trial_sites,
@@ -353,9 +385,13 @@ def main():
         temperature=args.temperature,
         max_displacement=args.max_displacement,
         local_trial_radius=args.local_trial_radius,
+        relax=not args.no_relax,
+        relax_fmax=args.relax_fmax,
+        relax_steps=args.relax_steps,
         seed=args.seed,
-        score_fn=score_fn,
+        calculator=calculator,
         return_frames=bool(args.trajectory),
+        progress_every=args.progress_every,
     )
     if args.trajectory:
         trajectory, frames = mc_result
@@ -379,7 +415,7 @@ def main():
     if args.plot:
         print(f"plot: {plot_trial_sites(atoms, trial_sites, args.plot)}")
     if args.state_plot:
-        print(f"state plot: {plot_initial_final_states(initial_atoms, atoms, args.state_plot)}")
+        print(f"state plot: {plot_final_state(atoms, args.state_plot)}")
 
 
 if __name__ == "__main__":

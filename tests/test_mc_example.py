@@ -52,6 +52,7 @@ def test_minimal_mc_emt_score_moves_atoms_without_accepting_everything():
         temperature=50000.0,
         max_displacement=0.35,
         local_trial_radius=3.0,
+        relax=False,
         seed=11,
         score_fn=score,
     )
@@ -87,6 +88,7 @@ def test_minimal_mc_can_write_ase_trajectory(tmp_path):
         steps=5,
         temperature=1500.0,
         max_displacement=0.35,
+        relax=False,
         seed=2,
         return_frames=True,
     )
@@ -117,3 +119,36 @@ def test_initial_final_state_plot_is_written(tmp_path):
 
     assert output.exists()
     assert output.stat().st_size > 0
+
+
+def test_minimal_mc_can_relax_trial_states():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms(
+        "Pt4",
+        positions=np.array(
+            [
+                [5.0, 5.0, 5.0],
+                [5.0, 5.0, 7.0],
+                [5.0, 7.0, 5.0],
+                [7.0, 5.0, 5.0],
+            ]
+        ),
+        cell=np.eye(3) * 12.0,
+    )
+    trial_sites = np.array([[6.0, 6.0, 8.0], [6.0, 8.0, 6.0], [8.0, 6.0, 6.0]])
+
+    trajectory = example.run_minimal_mc(
+        atoms,
+        trial_sites,
+        steps=2,
+        temperature=1500.0,
+        max_displacement=0.35,
+        relax=True,
+        relax_steps=2,
+        calculator=example.make_emt_calculator(),
+    )
+
+    assert trajectory.shape == (2, 5)
+    assert np.isfinite(trajectory[:, 2]).all()

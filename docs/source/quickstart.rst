@@ -114,13 +114,13 @@ destinations or directions for Monte Carlo moves near the nanoparticle surface.
 Minimal MC Loop
 ---------------
 
-The example chooses likely surface atoms by radial distance, picks a sampled
-voxel trial site, and moves the atom a short distance toward that site. The
-default score is the ASE EMT potential energy, which keeps the tutorial
-physically interpretable while still running quickly. With the default
-``temperature=900`` K and ``max_displacement=0.35``, the Pt cube accepts local
-surface moves without accepting every trial. The documentation image below uses
-1500 K and a slightly tighter shell mask to give an acceptance ratio near 20%.
+The example chooses likely surface atoms by radial distance, picks a local
+sampled voxel trial site, and moves the atom a short distance toward that site.
+Before scoring, the structure is relaxed with the selected ASE calculator. Each
+trial move is also relaxed before applying the Metropolis criterion. This makes
+the acceptance depend on relaxed local minima rather than on the raw trial
+guess. The default score is ASE EMT; ORB-V3 can be selected with
+``--score orb-v3``.
 
 .. code-block:: python
 
@@ -135,6 +135,7 @@ surface moves without accepting every trial. The documentation image below uses
 
    atoms.calc = EMT()
 
+   # The full example relaxes the initial and trial structures before scoring.
    current_score = atoms.get_potential_energy()
    beta = 1.0 / (8.617333262145e-5 * 1500.0)
 
@@ -165,6 +166,7 @@ Run the EMT tutorial example with:
    python examples/mc/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 \
        --shell-scale 1.25 --core-scale 1.05 \
        --steps 250 --score emt --temperature 1500 \
+       --relax-fmax 0.05 --relax-steps 50 \
        --plot quickstart_wulff_mc_sites.png \
        --state-plot docs/source/_static/quickstart_wulff_mc_initial_final.png
 
@@ -177,14 +179,11 @@ trajectory by default:
 
    examples/mc/orb_v3_wulff_mc.traj
 
-The image below was generated from that 250-step EMT run. The local trial-site
-selection gives ``48/250`` accepted moves, an acceptance ratio of ``0.192``.
-The final panel is colored by displacement from the initial structure so the
-surface rearrangement is visible.
+The image below shows the final relaxed nanoparticle state from the MC run.
 
 .. image:: _static/quickstart_wulff_mc_initial_final.png
-   :alt: Initial and final ASE-rendered nanoparticle states after 250 EMT MC steps
-   :width: 95%
+   :alt: Final ASE-rendered nanoparticle state after relaxed voxel-guided MC steps
+   :width: 65%
 
 Open it with ASE to inspect the MC path:
 
@@ -193,9 +192,9 @@ Open it with ASE to inspect the MC path:
    ase gui examples/mc/orb_v3_wulff_mc.traj
 
 The first frame is the starting cube-like particle. Each following frame is the
-structure after one MC step; rejected steps repeat the previous coordinates but
-still carry updated ``Atoms.info`` metadata such as ``mc_accepted`` and
-``mc_score``. Pass ``--trajectory ""`` to skip writing frames, or
+relaxed structure after one MC step; rejected steps repeat the previous relaxed
+coordinates but still carry updated ``Atoms.info`` metadata such as
+``mc_accepted`` and ``mc_score``. Pass ``--trajectory ""`` to skip writing frames, or
 ``--trajectory path/to/file.traj`` to choose a different output path.
 
 To try the optional ORB-V3 scorer after installing ORB and its model
