@@ -108,8 +108,8 @@ Those positions are voxel centers in real space. In the MCMD example they are
 candidate carbon positions for CO adsorption. Occupied sites are assigned by
 the nearest adsorbed carbon within a short cutoff.
 
-.. image:: _static/quickstart_wulff_mc_sites.png
-   :alt: Wulff nanoparticle atoms and voxel-sampled MC trial sites
+.. image:: _static/quickstart_co_mcmd_sites.png
+   :alt: Wulff nanoparticle atoms and voxel-sampled CO adsorption sites
    :width: 80%
 
 Minimal MCMD Loop
@@ -155,8 +155,10 @@ Run a short ORB-V3 CPU MCMD example with:
    python examples/mc/orb_v3_co_mcmd.py --natoms 55 --steps 100 \
        --calculator orb-v3 --device cpu --orb-neighbors 20 \
        --temperature 500 --target-coverage 0.5 --md-steps 50 \
-       --plot docs/source/_static/quickstart_wulff_mc_sites.png \
-       --state-plot docs/source/_static/quickstart_wulff_mc_initial_final.png
+       --quickstart-figures
+
+To regenerate the same documentation figures on a GPU, change ``--device cpu``
+to ``--device cuda``.
 
 For a quick mechanics check without ORB, pass ``--calculator emt --steps 5
 --md-steps 1``. EMT is not intended to be a chemically meaningful CO/Pt model
@@ -172,7 +174,7 @@ writes an ASE trajectory by default:
 
 The image below shows the final nanoparticle state from the MCMD run.
 
-.. image:: _static/quickstart_wulff_mc_initial_final.png
+.. image:: _static/quickstart_co_mcmd_final.png
    :alt: Final ASE-rendered nanoparticle state after voxel-guided CO MCMD
    :width: 65%
 
