@@ -136,23 +136,26 @@ Run the correctness tests with:
 pytest
 ```
 
-Run the backend benchmark with:
+Run the mask-generation benchmark with:
 
 ```bash
-python benchmarks/benchmark_backends.py --backends numpy numba taichi cupy
-python benchmarks/benchmark_backends.py --zeolite-scaling --framework BEA --resolution 0.5 --plot zeolite_scaling.png
-python benchmarks/benchmark_backends.py --workload zeolite --backends taichi-gpu
+python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface --plot mask_generation_scaling.png
 python benchmarks/benchmark_dtypes.py --backend numpy
 ```
 
-Run the built-in structure benchmarks for a zeolite and a roughly 1000 atom Wulff
-construction with:
+This benchmark scales zeolite, nanoparticle, and surface systems from small
+models to roughly 3000 atoms and compares a direct atom-grid distance scan with
+`VoxelGrid` NumPy and `VoxelGridNumba`.
+
+Run the built-in structure benchmark helper with:
 
 ```bash
 python benchmarks/benchmark_structures.py
 ```
 
-Backends whose optional dependencies are not installed are reported as missing.
+The main benchmark compares a simple direct atom-grid distance scan with
+`VoxelGrid` NumPy and `VoxelGridNumba`. CuPy and Taichi backends are available
+experimentally, but they are not the focus of the default benchmark.
 
 ## Documentation
 

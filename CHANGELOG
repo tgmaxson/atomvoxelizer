@@ -15,6 +15,10 @@ https://keepachangelog.com/en/1.1.0/
 - Renamed the previous Wulff nanoparticle MC example to
   ``examples/mc/orb_v3_co_mcmd.py`` and updated the quickstart around MCMD
   coverage control.
+- Reworked ``benchmarks/benchmark_backends.py`` into a CPU mask-generation
+  benchmark comparing a direct atom-grid distance scan with ``VoxelGrid`` NumPy
+  and ``VoxelGridNumba`` across zeolite, nanoparticle, and surface workloads up
+  to roughly 3000 atoms.
 - Improved the CO MCMD example by using a larger finite-cell padding, the
   ORB-V3 infinite-neighbor model by default, clean-nanoparticle optimization,
   CO-only insertion optimization, refreshed voxel adsorption sites each MC

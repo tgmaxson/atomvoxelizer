@@ -141,13 +141,16 @@ The step-by-step explanation is in :doc:`quickstart`.
 Benchmarks
 ----------
 
-Run the backend benchmark with:
+Run the mask-generation benchmark with:
 
 .. code-block:: bash
 
-   python benchmarks/benchmark_backends.py --backends numpy numba taichi cupy
-   python benchmarks/benchmark_backends.py --zeolite-scaling --framework BEA \
-       --resolution 0.5 --plot zeolite_scaling.png
+   python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
+       --plot mask_generation_scaling.png
+
+The benchmark scales each workload from small systems to roughly 3000 atoms and
+compares a simple direct atom-grid distance scan with ``VoxelGrid`` NumPy and
+``VoxelGridNumba``.
 
 Run the dtype benchmark to compare grid storage types:
 
@@ -156,6 +159,6 @@ Run the dtype benchmark to compare grid storage types:
    python benchmarks/benchmark_dtypes.py --backend numpy
    python benchmarks/benchmark_dtypes.py --backend numba
 
-.. image:: _static/zeolite_scaling.png
-   :alt: BEA zeolite backend scaling benchmark
+.. image:: _static/mask_generation_scaling.png
+   :alt: AtomVoxelizer mask-generation benchmark
    :width: 90%

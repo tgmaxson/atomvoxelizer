@@ -15,4 +15,5 @@ tmp/
 
 docs/build/
 benchmarks/*.png
+benchmarks/*.csv
 examples/**/*.npz

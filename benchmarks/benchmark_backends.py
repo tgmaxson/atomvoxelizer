@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import importlib
 import os
 import time
 from pathlib import Path
 
 import numpy as np
+from ase.build import fcc111
 from ase.cluster import wulff_construction
 from ase.data import covalent_radii
 from ase.io import read
@@ -17,150 +19,241 @@ from atomvoxelizer import VoxelGrid
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load_backend(name):
-    if name == "numpy":
-        return VoxelGrid
-    if name == "numba":
-        module = importlib.import_module("atomvoxelizer.numba_backend")
-        return module.VoxelGridNumba
-    if name == "taichi":
-        module = importlib.import_module("atomvoxelizer.taichi_backend")
-        return module.VoxelGridTaichi
-    if name in {"taichi-gpu", "taichi_gpu"}:
-        module = importlib.import_module("atomvoxelizer.taichi_backend")
-        return module.VoxelGridTaichiGPU
-    if name == "cupy":
-        module = importlib.import_module("atomvoxelizer.cupy_backend")
-        return module.VoxelGridCuPy
-    raise ValueError(f"Unknown backend: {name}")
-
-
-def make_synthetic_workload(cell_length, atom_count, seed):
-    rng = np.random.default_rng(seed)
-    centers = rng.random((atom_count, 3)) * cell_length
-    radii = rng.choice(np.array([0.55, 0.75, 1.0], dtype=np.float64), size=atom_count)
-    return np.eye(3) * cell_length, centers, radii
-
-
-def make_zeolite_workload(framework, radius_scale):
-    atoms = read(ROOT / "examples" / "zeolite" / f"{framework.upper()}.cif")
-    return make_atoms_workload(atoms, radius_scale)
-
-
 def make_atoms_workload(atoms, radius_scale):
     centers = atoms.get_positions()
     radii = np.array([covalent_radii[atom.number] * radius_scale for atom in atoms], dtype=np.float64)
     return atoms.cell.array, centers, radii
 
 
-def make_wulff_workload(size, radius_scale, padding):
-    atoms = wulff_construction(
-        "Pt",
-        surfaces=[(1, 0, 0), (1, 1, 0), (1, 1, 1)],
-        energies=[1.0, 1.08, 0.92],
-        size=size,
-        structure="fcc",
-        latticeconstant=3.92,
-        rounding="closest",
-    )
+def make_zeolite_workloads(framework, radius_scale):
+    atoms = read(ROOT / "examples" / "zeolite" / f"{framework.upper()}.cif")
+    scale_factors = [(1, 1, 1), (1, 1, 2), (1, 2, 2), (2, 2, 2), (2, 2, 4)]
+    workloads = []
+    for scale in scale_factors:
+        scaled = atoms.repeat(scale)
+        cell, centers, radii = make_atoms_workload(scaled, radius_scale)
+        workloads.append(
+            {
+                "workload": "zeolite",
+                "scale": "x".join(str(value) for value in scale),
+                "cell": cell,
+                "centers": centers,
+                "radii": radii,
+            }
+        )
+    return workloads
+
+
+def center_cluster(atoms, padding):
+    atoms = atoms.copy()
     positions = atoms.get_positions()
     positions -= positions.min(axis=0)
     positions += padding
     lengths = positions.max(axis=0) + padding
-    radii = np.array([covalent_radii[atom.number] * radius_scale for atom in atoms], dtype=np.float64)
-    return np.diag(lengths), positions, radii
+    cell_length = max(float(lengths.max()), 2.0 * padding)
+    atoms.positions = positions
+    atoms.set_cell(np.eye(3) * cell_length)
+    atoms.set_pbc(False)
+    return atoms
 
 
-def make_workload(args):
-    if args.workload == "synthetic":
-        return make_synthetic_workload(args.cell_length, args.atoms, args.seed)
-    if args.workload == "zeolite":
-        return make_zeolite_workload(args.framework, args.radius_scale)
-    if args.workload == "wulff":
-        return make_wulff_workload(args.wulff_size, args.radius_scale, args.padding)
-    raise ValueError(f"Unknown workload: {args.workload}")
-
-
-def run_once(cls, cell, resolution, centers, radii):
-    grid = cls(cell=cell, resolution=resolution)
-    grid.add_spheres(centers, radii, value=1.0)
-    grid.set_spheres(centers, radii * 0.5, value=-1.0)
-    grid.clamp_grid(-1.0, 1.0)
-    synchronize = getattr(grid, "synchronize", None)
-    if synchronize is not None:
-        synchronize()
-    return grid
-
-
-def time_backend(cls, cell, resolution, centers, radii, repeats):
-    run_once(cls, cell, resolution, centers[: min(2, len(centers))], radii[: min(2, len(radii))])
-    times = []
-    grid = None
-    for _ in range(repeats):
-        start = time.perf_counter()
-        grid = run_once(cls, cell, resolution, centers, radii)
-        times.append(time.perf_counter() - start)
-    return np.array(times), grid
-
-
-def consistency_summary(values, reference):
-    occupied = int(np.count_nonzero(values))
-    total = float(values.sum())
-    if reference is None:
-        return occupied, total, 0.0
-    return occupied, total, float(np.max(np.abs(values - reference)))
-
-
-def benchmark_workload(workload, backend_names, repeats):
-    cell, centers, radii = workload["cell"], workload["centers"], workload["radii"]
-    rows = []
-    reference = None
-    for backend in backend_names:
-        try:
-            cls = load_backend(backend)
-            times, grid = time_backend(cls, cell, workload["resolution"], centers, radii, repeats)
-        except Exception as exc:
-            rows.append(
-                {
-                    "workload": workload["name"],
-                    "scale": workload.get("scale", "-"),
-                    "backend": backend,
-                    "backend_name": "missing",
-                    "atoms": len(centers),
-                    "gpts": "-",
-                    "best_s": np.nan,
-                    "mean_s": np.nan,
-                    "std_s": np.nan,
-                    "occupied": 0,
-                    "value_sum": np.nan,
-                    "max_abs_diff": np.nan,
-                    "note": str(exc),
-                }
-            )
-            continue
-
-        values = grid.to_numpy()
-        if reference is None:
-            reference = values
-        occupied, total, max_abs_diff = consistency_summary(values, reference)
-        rows.append(
+def make_nanoparticle_workloads(radius_scale, padding):
+    target_sizes = [55, 147, 309, 561, 923, 1415, 2057, 2869]
+    workloads = []
+    for size in target_sizes:
+        atoms = wulff_construction(
+            "Pt",
+            surfaces=[(1, 0, 0), (1, 1, 0), (1, 1, 1)],
+            energies=[1.0, 1.08, 0.92],
+            size=size,
+            structure="fcc",
+            latticeconstant=3.92,
+            rounding="closest",
+        )
+        atoms = center_cluster(atoms, padding=padding)
+        cell, centers, radii = make_atoms_workload(atoms, radius_scale)
+        workloads.append(
             {
-                "workload": workload["name"],
-                "scale": workload.get("scale", "-"),
-                "backend": backend,
-                "backend_name": grid.backend_name,
-                "atoms": len(centers),
-                "gpts": "x".join(str(int(x)) for x in grid.gpts),
-                "best_s": float(times.min()),
-                "mean_s": float(times.mean()),
-                "std_s": float(times.std()),
-                "occupied": occupied,
-                "value_sum": total,
-                "max_abs_diff": max_abs_diff,
-                "note": "",
+                "workload": "nanoparticle",
+                "scale": str(size),
+                "cell": cell,
+                "centers": centers,
+                "radii": radii,
             }
         )
+    return workloads
+
+
+def make_surface_workloads(radius_scale):
+    sizes = [(4, 4, 3), (6, 6, 4), (8, 8, 5), (12, 12, 5), (16, 16, 6), (22, 22, 6)]
+    workloads = []
+    for size in sizes:
+        atoms = fcc111("Pt", size=size, vacuum=6.0, a=3.92)
+        atoms.center(vacuum=6.0, axis=2)
+        atoms.set_pbc([True, True, False])
+        cell, centers, radii = make_atoms_workload(atoms, radius_scale)
+        workloads.append(
+            {
+                "workload": "surface",
+                "scale": "x".join(str(value) for value in size),
+                "cell": cell,
+                "centers": centers,
+                "radii": radii,
+            }
+        )
+    return workloads
+
+
+def make_workloads(names, framework, radius_scale, padding):
+    workloads = []
+    for name in names:
+        if name == "zeolite":
+            workloads.extend(make_zeolite_workloads(framework, radius_scale))
+        elif name == "nanoparticle":
+            workloads.extend(make_nanoparticle_workloads(radius_scale, padding))
+        elif name == "surface":
+            workloads.extend(make_surface_workloads(radius_scale))
+        else:
+            raise ValueError(f"Unknown workload: {name}")
+    return workloads
+
+
+def voxel_centers(cell, gpts):
+    nx, ny, nz = [int(value) for value in gpts]
+    ix, iy, iz = np.meshgrid(
+        np.arange(nx) + 0.5,
+        np.arange(ny) + 0.5,
+        np.arange(nz) + 0.5,
+        indexing="ij",
+    )
+    frac = np.stack([ix / nx, iy / ny, iz / nz], axis=-1)
+    return frac @ np.asarray(cell, dtype=np.float64)
+
+
+def direct_atom_grid_scan(cell, gpts, centers, radii):
+    """Simple all-pairs atom-grid mask used as a baseline."""
+    cell = np.asarray(cell, dtype=np.float64)
+    cell_inv = np.linalg.inv(cell)
+    points = voxel_centers(cell, gpts)
+    mask = np.zeros(tuple(int(value) for value in gpts), dtype=np.float32)
+    for center, radius in zip(centers, radii):
+        disp = points - center
+        disp_frac = disp @ cell_inv
+        disp_frac -= np.round(disp_frac)
+        disp_mic = disp_frac @ cell
+        dist2 = np.sum(disp_mic * disp_mic, axis=-1)
+        mask[dist2 <= radius * radius] = 1.0
+    return mask
+
+
+def make_numpy_mask(cell, resolution, centers, radii):
+    grid = VoxelGrid(cell=cell, resolution=resolution, dtype=np.float32)
+    grid.set_spheres(centers, radii, value=1.0)
+    return grid.to_numpy(), grid.gpts
+
+
+def make_numba_mask(cell, resolution, centers, radii):
+    module = importlib.import_module("atomvoxelizer.numba_backend")
+    grid = module.VoxelGridNumba(cell=cell, resolution=resolution, dtype=np.float32)
+    grid.set_spheres(centers, radii, value=1.0)
+    return grid.to_numpy(), grid.gpts
+
+
+def time_call(func, repeats):
+    times = []
+    value = None
+    for _ in range(repeats):
+        start = time.perf_counter()
+        value = func()
+        times.append(time.perf_counter() - start)
+    return np.array(times, dtype=float), value
+
+
+def warm_numba():
+    try:
+        cell = np.eye(3) * 8.0
+        centers = np.array([[4.0, 4.0, 4.0]], dtype=float)
+        radii = np.array([1.0], dtype=float)
+        make_numba_mask(cell, 1.0, centers, radii)
+    except Exception:
+        pass
+
+
+def benchmark_one(workload, methods, resolution, repeats, include_direct):
+    cell = workload["cell"]
+    centers = workload["centers"]
+    radii = workload["radii"]
+    rows = []
+
+    numpy_times, (numpy_values, gpts) = time_call(
+        lambda: make_numpy_mask(cell, resolution, centers, radii),
+        repeats=repeats,
+    )
+    rows.append(
+        row_from_timing(workload, "VoxelGrid NumPy", numpy_times, gpts)
+    )
+
+    if "numba" in methods:
+        try:
+            numba_times, (numba_values, numba_gpts) = time_call(
+                lambda: make_numba_mask(cell, resolution, centers, radii),
+                repeats=repeats,
+            )
+            rows.append(
+                row_from_timing(
+                    workload,
+                    "VoxelGrid Numba",
+                    numba_times,
+                    numba_gpts,
+                    numba_values,
+                )
+            )
+        except Exception as exc:
+            rows.append(missing_row(workload, "VoxelGrid Numba", gpts, str(exc)))
+
+    if include_direct:
+        direct_times, direct_values = time_call(
+            lambda: direct_atom_grid_scan(cell, gpts, centers, radii),
+            repeats=1,
+        )
+        rows.append(
+            row_from_timing(
+                workload,
+                "Direct atom-grid scan",
+                direct_times,
+                gpts,
+                direct_values,
+            )
+        )
     return rows
+
+
+def row_from_timing(workload, method, times, gpts, values=None):
+    return {
+        "workload": workload["workload"],
+        "scale": workload["scale"],
+        "method": method,
+        "atoms": int(len(workload["centers"])),
+        "gpts": "x".join(str(int(value)) for value in gpts),
+        "best_s": float(times.min()),
+        "mean_s": float(times.mean()),
+        "std_s": float(times.std()),
+        "note": "",
+    }
+
+
+def missing_row(workload, method, gpts, note):
+    return {
+        "workload": workload["workload"],
+        "scale": workload["scale"],
+        "method": method,
+        "atoms": int(len(workload["centers"])),
+        "gpts": "x".join(str(int(value)) for value in gpts),
+        "best_s": np.nan,
+        "mean_s": np.nan,
+        "std_s": np.nan,
+        "note": note,
+    }
 
 
 def format_float(value, precision=4):
@@ -170,133 +263,133 @@ def format_float(value, precision=4):
 
 
 def print_table(rows):
-    headers = [
-        "workload",
-        "scale",
-        "backend",
-        "atoms",
-        "gpts",
-        "best [s]",
-        "mean [s]",
-        "std [s]",
-        "max |diff|",
-        "note",
+    headers = ["workload", "scale", "method", "atoms", "gpts", "best [s]", "mean [s]", "std [s]", "note"]
+    table_rows = [
+        [
+            row["workload"],
+            row["scale"],
+            row["method"],
+            str(row["atoms"]),
+            row["gpts"],
+            format_float(row["best_s"]),
+            format_float(row["mean_s"]),
+            format_float(row["std_s"]),
+            row["note"],
+        ]
+        for row in rows
     ]
-    table_rows = []
-    for row in rows:
-        table_rows.append(
-            [
-                row["workload"],
-                row["scale"],
-                f"{row['backend']} ({row['backend_name']})",
-                str(row["atoms"]),
-                row["gpts"],
-                format_float(row["best_s"]),
-                format_float(row["mean_s"]),
-                format_float(row["std_s"]),
-                format_float(row["max_abs_diff"], precision=3),
-                row["note"],
-            ]
-        )
-
     widths = [
-        max(len(str(value)) for value in [header] + [table_row[i] for table_row in table_rows])
-        for i, header in enumerate(headers)
+        max(len(str(value)) for value in [header] + [table_row[index] for table_row in table_rows])
+        for index, header in enumerate(headers)
     ]
-    header_line = "  ".join(header.ljust(widths[i]) for i, header in enumerate(headers))
-    separator = "  ".join("-" * width for width in widths)
-    print(header_line)
-    print(separator)
+    print("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
+    print("  ".join("-" * width for width in widths))
     for table_row in table_rows:
-        print("  ".join(str(value).ljust(widths[i]) for i, value in enumerate(table_row)))
+        print("  ".join(str(value).ljust(widths[index]) for index, value in enumerate(table_row)))
 
 
-def zeolite_scaling_workloads(framework, resolution, radius_scale):
-    atoms = read(ROOT / "examples" / "zeolite" / f"{framework.upper()}.cif")
-    scale_factors = [(1, 1, 1), (1, 1, 2), (1, 2, 2), (2, 2, 2)]
-    workloads = []
-    for scale in scale_factors:
-        scaled_atoms = atoms.repeat(scale)
-        cell, centers, radii = make_atoms_workload(scaled_atoms, radius_scale)
-        workloads.append(
-            {
-                "name": f"{framework.upper()} zeolite",
-                "scale": "x".join(str(value) for value in scale),
-                "cell": cell,
-                "centers": centers,
-                "radii": radii,
-                "resolution": resolution,
-            }
+def write_csv(rows, output_path):
+    with open(output_path, "w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["workload", "scale", "method", "atoms", "gpts", "best_s", "mean_s", "std_s", "note"],
         )
-    return workloads
+        writer.writeheader()
+        writer.writerows(rows)
 
 
-def plot_scaling(rows, output_path):
+def plot_rows(rows, output_path):
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
     import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
-    backends = []
-    for row in rows:
-        if row["backend_name"] != "missing" and row["backend"] not in backends:
-            backends.append(row["backend"])
+    colors = {
+        "Direct atom-grid scan": "#b23a48",
+        "VoxelGrid NumPy": "#2a6fbb",
+        "VoxelGrid Numba": "#2f9e44",
+    }
+    markers = {
+        "Direct atom-grid scan": "o",
+        "VoxelGrid NumPy": "s",
+        "VoxelGrid Numba": "^",
+    }
+    workloads = [name for name in ["zeolite", "nanoparticle", "surface"] if any(row["workload"] == name for row in rows)]
+    fig, axes = plt.subplots(1, len(workloads), figsize=(4.1 * len(workloads), 3.8), dpi=220, sharey=True)
+    if len(workloads) == 1:
+        axes = [axes]
 
-    for backend in backends:
-        backend_rows = [row for row in rows if row["backend"] == backend and row["backend_name"] != "missing"]
-        backend_rows.sort(key=lambda row: row["atoms"])
-        ax.plot(
-            [row["atoms"] for row in backend_rows],
-            [row["best_s"] for row in backend_rows],
-            marker="o",
-            label=backend,
-        )
-
-    ax.set_xlabel("atom count")
-    ax.set_ylabel("best time [s]")
-    ax.set_title("Zeolite voxelization scaling")
-    ax.legend()
-    fig.savefig(output_path, dpi=200)
+    for ax, workload in zip(axes, workloads):
+        subset = [row for row in rows if row["workload"] == workload and np.isfinite(row["best_s"])]
+        for method in ["Direct atom-grid scan", "VoxelGrid NumPy", "VoxelGrid Numba"]:
+            points = [row for row in subset if row["method"] == method]
+            if not points:
+                continue
+            points.sort(key=lambda row: row["atoms"])
+            ax.plot(
+                [row["atoms"] for row in points],
+                [row["best_s"] for row in points],
+                marker=markers[method],
+                color=colors[method],
+                label=method,
+                linewidth=1.8,
+                markersize=4.5,
+            )
+        ax.set_yscale("log")
+        ax.set_xlabel("Atoms")
+        ax.set_title(workload.capitalize())
+        ax.grid(True, axis="y", which="both", alpha=0.28)
+        ax.grid(True, axis="x", which="major", alpha=0.18)
+    axes[0].set_ylabel("Best wall time [s]")
+    axes[0].legend(fontsize=7.2, loc="best", frameon=True)
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=220)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Benchmark AtomVoxelizer backends.")
-    parser.add_argument("--backends", nargs="+", default=["numpy", "numba", "taichi", "cupy"])
-    parser.add_argument("--workload", choices=["synthetic", "zeolite", "wulff"], default="zeolite")
-    parser.add_argument("--zeolite-scaling", action="store_true")
-    parser.add_argument("--plot", default=None, help="Output path for benchmark plot.")
-    parser.add_argument("--resolution", type=float, default=0.25)
+    parser = argparse.ArgumentParser(
+        description="Benchmark direct atom-grid mask generation against AtomVoxelizer NumPy and Numba."
+    )
+    parser.add_argument(
+        "--workloads",
+        nargs="+",
+        choices=["zeolite", "nanoparticle", "surface"],
+        default=["zeolite", "nanoparticle", "surface"],
+    )
+    parser.add_argument("--resolution", type=float, default=1.1)
     parser.add_argument("--repeats", type=int, default=3)
-    parser.add_argument("--radius-scale", type=float, default=1.0)
+    parser.add_argument("--radius-scale", type=float, default=0.85)
     parser.add_argument("--framework", default="BEA")
-    parser.add_argument("--wulff-size", type=int, default=1000)
     parser.add_argument("--padding", type=float, default=5.0)
-    parser.add_argument("--cell-length", type=float, default=32.0)
-    parser.add_argument("--atoms", type=int, default=512)
-    parser.add_argument("--seed", type=int, default=123)
+    parser.add_argument("--plot", default=None, help="Output path for a log-scale timing plot.")
+    parser.add_argument("--csv", default=None, help="Optional CSV output path.")
+    parser.add_argument("--no-direct", action="store_true", help="Skip the direct atom-grid scan baseline.")
+    parser.add_argument("--no-numba", action="store_true", help="Skip the optional Numba backend.")
     args = parser.parse_args()
 
-    if args.zeolite_scaling:
-        workloads = zeolite_scaling_workloads(args.framework, args.resolution, args.radius_scale)
-    else:
-        cell, centers, radii = make_workload(args)
-        workloads = [
-            {
-                "name": args.workload,
-                "cell": cell,
-                "centers": centers,
-                "radii": radii,
-                "resolution": args.resolution,
-            }
-        ]
+    methods = ["numpy"]
+    if not args.no_numba:
+        methods.append("numba")
+        warm_numba()
 
+    workloads = make_workloads(args.workloads, args.framework, args.radius_scale, args.padding)
     rows = []
     for workload in workloads:
-        rows.extend(benchmark_workload(workload, args.backends, args.repeats))
+        rows.extend(
+            benchmark_one(
+                workload,
+                methods=methods,
+                resolution=args.resolution,
+                repeats=args.repeats,
+                include_direct=not args.no_direct,
+            )
+        )
 
     print_table(rows)
+    if args.csv:
+        write_csv(rows, args.csv)
+        print(f"\ncsv: {args.csv}")
     if args.plot:
-        plot_scaling(rows, args.plot)
-        print(f"\nplot: {args.plot}")
+        plot_rows(rows, args.plot)
+        print(f"plot: {args.plot}")
 
 
 if __name__ == "__main__":

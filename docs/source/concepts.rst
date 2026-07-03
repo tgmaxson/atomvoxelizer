@@ -100,12 +100,19 @@ workloads:
 
    pip install taichi
 
-Run backend benchmarks with:
+Run the CPU mask-generation benchmark with:
 
 .. code-block:: bash
 
-   python benchmarks/benchmark_backends.py --workload zeolite --backends numpy numba taichi
-   python benchmarks/benchmark_backends.py --zeolite-scaling --framework BEA --resolution 0.5 --plot zeolite_scaling.png
+   python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
+       --plot mask_generation_scaling.png
+
+This benchmark compares a simple direct atom-grid distance scan with
+``VoxelGrid`` NumPy and ``VoxelGridNumba`` from small models to roughly 3000
+atoms for zeolite, nanoparticle, and surface workloads. CuPy and Taichi remain
+experimental backends, but they are not emphasized in the default benchmark
+because current atom-by-atom GPU updates are generally not competitive for
+these workloads.
 
 Field Voxel Grids
 -----------------

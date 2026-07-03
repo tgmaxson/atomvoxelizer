@@ -112,6 +112,7 @@ Run tests and benchmarks with:
 .. code-block:: bash
 
    pytest
-   python benchmarks/benchmark_backends.py --backends numpy numba taichi cupy
+   python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
+       --plot mask_generation_scaling.png
    python benchmarks/benchmark_dtypes.py --backend numpy
    python benchmarks/benchmark_structures.py
