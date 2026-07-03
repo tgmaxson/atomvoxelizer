@@ -124,8 +124,9 @@ after every decision. Rejected trials restore the previous accepted structure
 before the MD segment.
 
 After each step, the CO chemical potential is nudged toward the requested
-coverage target. The default target is 50% coverage of the sampled surface
-sites.
+coverage target. Coverage is counted as ``N_CO / N_surface_atoms``, where
+surface atoms are nanoparticle atoms with coordination number below 11 by
+default.
 
 .. code-block:: python
 

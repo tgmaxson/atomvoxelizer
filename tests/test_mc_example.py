@@ -205,7 +205,78 @@ def test_co_adsorption_helpers_count_and_remove_adsorbates():
 
     adsorbed = example.add_co_adsorbate(atoms, site, bond_length=1.15)
     assert list(adsorbed.symbols) == ["Pt", "C", "O"]
-    assert example.coverage_fraction(adsorbed, np.array([site]), cutoff=0.2) == pytest.approx(1.0)
+    assert example.surface_atom_count(adsorbed, cn_threshold=11) == 1
+    assert example.coverage_fraction(adsorbed, surface_count=1) == pytest.approx(1.0)
 
     removed = example.remove_co_adsorbate(adsorbed, example.co_carbon_indices(adsorbed)[0])
     assert list(removed.symbols) == ["Pt"]
+
+
+def test_surface_atom_count_uses_substrate_coordination_numbers():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms(
+        "Pt8",
+        positions=np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 2.8],
+                [0.0, 2.8, 0.0],
+                [0.0, 2.8, 2.8],
+                [2.8, 0.0, 0.0],
+                [2.8, 0.0, 2.8],
+                [2.8, 2.8, 0.0],
+                [2.8, 2.8, 2.8],
+            ]
+        ),
+        cell=np.eye(3) * 12.0,
+    )
+
+    np.testing.assert_array_equal(example.substrate_coordination_numbers(atoms, cutoff=3.0), np.full(8, 3))
+    assert example.surface_atom_count(atoms, cn_threshold=11, cutoff=3.0) == 8
+
+
+def test_co_coverage_uses_count_after_md_drift_from_voxel_site():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms("Pt", positions=[[5.0, 5.0, 5.0]], cell=np.eye(3) * 12.0)
+    site = np.array([5.0, 5.0, 7.0])
+    adsorbed = example.add_co_adsorbate(atoms, site, bond_length=1.15)
+    adsorbed.positions[1] += np.array([3.0, 0.0, 0.0])
+
+    occupied, assignments = example.site_occupancy(adsorbed, np.array([site]), cutoff=0.2)
+
+    assert not occupied.any()
+    assert assignments == {}
+    assert example.coverage_fraction(adsorbed, surface_count=1, cutoff=0.2) == pytest.approx(1.0)
+
+
+def test_co_mcmd_can_desorb_when_adsorbate_is_not_assigned_to_site():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms("Pt", positions=[[5.0, 5.0, 5.0]], cell=np.eye(3) * 12.0)
+    site = np.array([5.0, 5.0, 7.0])
+    adsorbed = example.add_co_adsorbate(atoms, site, bond_length=1.15)
+    adsorbed.positions[1] += np.array([3.0, 0.0, 0.0])
+
+    def md_runner(atoms, calculator, temperature, steps, timestep_fs, friction):
+        return example.potential_energy(atoms, calculator)
+
+    final_atoms, trajectory = example.run_co_adsorption_mcmd(
+        adsorbed,
+        np.array([site]),
+        calculator=example.make_emt_calculator(),
+        steps=1,
+        temperature=300.0,
+        co_chemical_potential=-100.0,
+        adsorption_probability=0.0,
+        md_steps=1,
+        md_runner=md_runner,
+    )
+
+    assert trajectory[0, 1] == -1.0
+    assert trajectory[0, 3] == 0.0
+    assert example.co_carbon_indices(final_atoms).size == 0

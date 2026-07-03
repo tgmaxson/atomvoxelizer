@@ -355,12 +355,34 @@ def site_occupancy(atoms, trial_sites, cutoff=1.2):
     return occupied, assignments
 
 
-def coverage_fraction(atoms, trial_sites, cutoff=1.2):
-    """Return fractional CO coverage of sampled surface sites."""
-    if len(trial_sites) == 0:
+def substrate_coordination_numbers(atoms, cutoff=None):
+    """Return coordination numbers for nanoparticle atoms, excluding C/O."""
+    substrate = substrate_indices(atoms)
+    if len(substrate) == 0:
+        return np.array([], dtype=int)
+    positions = atoms.positions[substrate]
+    if cutoff is None:
+        from ase.data import covalent_radii
+
+        radii = covalent_radii[atoms.numbers[substrate]]
+        cutoff = 1.25 * 2.0 * float(np.median(radii))
+    distances = np.linalg.norm(positions[:, None, :] - positions[None, :, :], axis=-1)
+    return np.count_nonzero((distances > 0.0) & (distances <= float(cutoff)), axis=1).astype(int)
+
+
+def surface_atom_count(atoms, cn_threshold=11, cutoff=None):
+    """Return the number of nanoparticle surface atoms with CN < ``cn_threshold``."""
+    coordination = substrate_coordination_numbers(atoms, cutoff=cutoff)
+    return int(np.count_nonzero(coordination < int(cn_threshold)))
+
+
+def coverage_fraction(atoms, surface_count, cutoff=None):
+    """Return fractional CO coverage as ``N_CO / N_surface_atoms``."""
+    del cutoff
+    surface_count = int(surface_count)
+    if surface_count <= 0:
         return 0.0
-    occupied, _assignments = site_occupancy(atoms, trial_sites, cutoff=cutoff)
-    return float(np.count_nonzero(occupied) / len(trial_sites))
+    return float(len(co_carbon_indices(atoms)) / surface_count)
 
 
 def add_co_adsorbate(atoms, site, bond_length=1.15, height=0.0):
@@ -431,6 +453,8 @@ def run_co_adsorption_mcmd(
     md_friction=0.02,
     adsorption_probability=0.5,
     site_cutoff=1.2,
+    surface_cn_threshold=11,
+    surface_cn_cutoff=None,
     co_bond_length=1.15,
     seed=11,
     return_frames=False,
@@ -440,9 +464,10 @@ def run_co_adsorption_mcmd(
     """Run simple grand-canonical CO adsorption/desorption MCMD.
 
     Adsorption attempts add one CO molecule at an empty voxel-sampled surface
-    site. Desorption attempts remove one adsorbed CO. The Metropolis score is
-    ``E - mu_CO * N_CO``. After every MC decision, accepted or rejected, the
-    accepted state is propagated by a short MD segment.
+    site. Desorption attempts remove one adsorbed CO. Coverage is ``N_CO``
+    divided by the number of nanoparticle atoms with CN < 11 by default. The
+    Metropolis score is ``E - mu_CO * N_CO``. After every MC decision, accepted
+    or rejected, the accepted state is propagated by a short MD segment.
     """
     if temperature <= 0.0:
         raise ValueError("temperature must be positive")
@@ -466,24 +491,32 @@ def run_co_adsorption_mcmd(
         occupied, assignments = site_occupancy(current, trial_sites, cutoff=site_cutoff)
         empty_sites = np.flatnonzero(~occupied)
         occupied_sites = np.flatnonzero(occupied)
+        current_carbon_indices = co_carbon_indices(current)
+        can_adsorb = len(empty_sites) > 0 and len(current_carbon_indices) < len(trial_sites)
+        can_desorb = len(current_carbon_indices) > 0
 
-        if len(empty_sites) == 0 and len(occupied_sites) == 0:
+        if not can_adsorb and not can_desorb:
             raise RuntimeError("No adsorption or desorption moves are available")
-        if len(empty_sites) == 0:
+        if not can_adsorb:
             action = "desorb"
-        elif len(occupied_sites) == 0:
+        elif not can_desorb:
             action = "adsorb"
         else:
             action = "adsorb" if rng.random() < adsorption_probability else "desorb"
 
-        old_n_co = len(co_carbon_indices(current))
+        old_n_co = len(current_carbon_indices)
         old_grand = current_energy - mu * old_n_co
         if action == "adsorb":
             site_index = int(empty_sites[int(rng.integers(len(empty_sites)))])
             trial = add_co_adsorbate(current, trial_sites[site_index], bond_length=co_bond_length)
         else:
-            site_index = int(occupied_sites[int(rng.integers(len(occupied_sites)))])
-            trial = remove_co_adsorbate(current, assignments[site_index])
+            if len(occupied_sites) > 0:
+                site_index = int(occupied_sites[int(rng.integers(len(occupied_sites)))])
+                carbon_index = assignments[site_index]
+            else:
+                site_index = -1
+                carbon_index = int(current_carbon_indices[int(rng.integers(len(current_carbon_indices)))])
+            trial = remove_co_adsorbate(current, carbon_index)
 
         trial_energy = potential_energy(trial, calculator)
         trial_n_co = len(co_carbon_indices(trial))
@@ -503,10 +536,14 @@ def run_co_adsorption_mcmd(
             timestep_fs=md_timestep_fs,
             friction=md_friction,
         )
-        occupied_after, _assignments_after = site_occupancy(current, trial_sites, cutoff=site_cutoff)
-        coverage = float(np.count_nonzero(occupied_after) / len(trial_sites))
-        mu += float(chemical_potential_step) * (float(target_coverage) - coverage)
         current_n_co = len(co_carbon_indices(current))
+        current_surface_count = surface_atom_count(
+            current,
+            cn_threshold=surface_cn_threshold,
+            cutoff=surface_cn_cutoff,
+        )
+        coverage = coverage_fraction(current, current_surface_count)
+        mu += float(chemical_potential_step) * (float(target_coverage) - coverage)
         current_grand = current_energy - mu * current_n_co
         acceptance_ratio = accepted / (step + 1)
         action_code = 1.0 if action == "adsorb" else -1.0
@@ -528,7 +565,8 @@ def run_co_adsorption_mcmd(
             print(
                 f"step {step + 1}/{steps}: action={action}, accepted={accepted}, "
                 f"acceptance={acceptance_ratio:.3f}, n_CO={current_n_co}, "
-                f"coverage={coverage:.3f}, mu_CO={mu:.3f} eV, energy={current_energy:.6f}",
+                f"surface_atoms={current_surface_count}, coverage={coverage:.3f}, "
+                f"mu_CO={mu:.3f} eV, energy={current_energy:.6f}",
                 flush=True,
             )
         if return_frames:
@@ -539,6 +577,7 @@ def run_co_adsorption_mcmd(
                     "mcmd_action": action,
                     "mcmd_accepted": bool(accept),
                     "mcmd_n_co": current_n_co,
+                    "mcmd_surface_atoms": current_surface_count,
                     "mcmd_coverage": coverage,
                     "mcmd_energy": current_energy,
                     "mcmd_mu_co": mu,
@@ -578,6 +617,13 @@ def main():
     parser.add_argument("--md-timestep-fs", type=float, default=1.0)
     parser.add_argument("--md-friction", type=float, default=0.02)
     parser.add_argument("--site-cutoff", type=float, default=1.2, help="Distance cutoff for assigning CO to sampled sites.")
+    parser.add_argument("--surface-cn-threshold", type=int, default=11, help="Surface atoms have nanoparticle CN below this value.")
+    parser.add_argument(
+        "--surface-cn-cutoff",
+        type=float,
+        default=None,
+        help="Distance cutoff for nanoparticle coordination numbers. Default uses covalent radii.",
+    )
     parser.add_argument("--co-bond-length", type=float, default=1.15)
     parser.add_argument("--seed", type=int, default=11)
     parser.add_argument("--progress-every", type=int, default=10, help="Print MCMD progress every N steps. Use 0 to disable.")
@@ -638,6 +684,8 @@ def main():
         md_timestep_fs=args.md_timestep_fs,
         md_friction=args.md_friction,
         site_cutoff=args.site_cutoff,
+        surface_cn_threshold=args.surface_cn_threshold,
+        surface_cn_cutoff=args.surface_cn_cutoff,
         co_bond_length=args.co_bond_length,
         seed=args.seed,
         return_frames=bool(args.trajectory),
@@ -649,10 +697,16 @@ def main():
         atoms, trajectory = mcmd_result
         frames = None
     final_substrate = substrate_indices(atoms)
+    final_surface_atoms = surface_atom_count(
+        atoms,
+        cn_threshold=args.surface_cn_threshold,
+        cutoff=args.surface_cn_cutoff,
+    )
     displacements = np.linalg.norm(atoms.positions[final_substrate] - initial_positions[: len(final_substrate)], axis=1)
 
     print(f"atoms: {len(atoms)}")
     print(f"substrate atoms: {len(final_substrate)}")
+    print(f"surface atoms (CN < {args.surface_cn_threshold}): {final_surface_atoms}")
     print(f"CO molecules: {len(co_carbon_indices(atoms))}")
     print(f"grid points: {tuple(int(x) for x in grid.gpts)}")
     print(f"trial sites: {len(trial_sites)}")
