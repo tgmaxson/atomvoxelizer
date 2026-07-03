@@ -120,13 +120,15 @@ Voxel-Guided CO MCMD
 ``examples/mc/orb_v3_co_mcmd.py`` builds a small cube-like WulffPack
 nanoparticle, constructs a coordination-surface voxel mask, samples adsorption
 sites, and runs CO adsorption/desorption MCMD. The default calculator is the
-conservative ORB-V3 20-neighbor model on CPU. ASE EMT is available with
-``--calculator emt`` for quick control-flow checks.
+conservative ORB-V3 infinite-neighbor model on CPU. ASE EMT is available with
+``--calculator emt`` for quick control-flow checks. Coverage is counted as
+``N_CO / N_surface_atoms`` and adsorption is capped by ``--max-coverage`` so the
+number of sampled voxel sites does not define the maximum CO loading.
 
 .. code-block:: bash
 
    python examples/mc/orb_v3_co_mcmd.py --natoms 55 --steps 100 \
-       --calculator orb-v3 --device cpu --orb-neighbors 20 \
+       --calculator orb-v3 --device cpu --orb-model-size inf \
        --temperature 500 --target-coverage 0.5 --md-steps 50
 
 By default the script writes ``examples/mc/orb_v3_co_mcmd.traj`` for viewing

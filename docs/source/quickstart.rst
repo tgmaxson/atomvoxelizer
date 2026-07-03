@@ -4,8 +4,8 @@ Quickstart Tutorial
 This tutorial builds a small cube-like WulffPack nanoparticle, converts it into
 a voxel coordination-surface mask, samples adsorption sites from that mask, and
 runs a simple CO adsorption/desorption MCMD loop. The runnable example defaults
-to ORB-V3 on CPU with the conservative 20-neighbor model. ASE EMT is kept as a
-fast fallback for testing the mechanics of the workflow.
+to ORB-V3 on CPU with the conservative infinite-neighbor model. ASE EMT is kept
+as a fast fallback for testing the mechanics of the workflow.
 
 The complete script is available at
 ``examples/mc/orb_v3_co_mcmd.py``.
@@ -53,15 +53,20 @@ padded cubic cell:
 
    import numpy as np
 
-   padding = 6.0
+   padding = 20.0
    positions = atoms.positions
    span = positions.max(axis=0) - positions.min(axis=0)
    cell_length = span.max() + 2.0 * padding
    atoms.positions = positions - positions.min(axis=0) + padding
    atoms.set_cell(np.eye(3) * cell_length)
 
-The padding should be larger than the largest mask radius so periodic wrapping
-does not make opposite sides of the finite particle interact.
+The padding should be large enough that desorbed or weakly bound CO molecules
+do not immediately interact with the opposite side of the finite simulation
+cell. The example defaults to ``20.0`` Angstrom.
+
+Before adsorption/desorption begins, the example optimizes the clean
+nanoparticle. This optimized structure is then used to build the first voxel
+surface mask.
 
 Build The Voxel Surface Mask
 ----------------------------
@@ -91,14 +96,14 @@ atom instead of scanning every grid point against every atom.
 Sample Trial Sites
 ------------------
 
-For a surface trial region, sample voxels with values near three. The range
-``2.5`` to ``3.5`` avoids depending on exact floating-point equality after
-repeated additions.
+For a surface trial region, sample all non-core shell voxels. This includes
+atop, bridge, hollow, edge, and corner-like environments instead of restricting
+CO to one voxel-count range.
 
 .. code-block:: python
 
    trial_sites = []
-   for position in grid.sample_voxels_in_range(2.5, 3.5, min_dist=0.6, seed=7):
+   for position in grid.sample_voxels_in_range(0.5, 100.0, min_dist=0.6, seed=7):
        trial_sites.append(np.asarray(position))
        if len(trial_sites) >= 500:
            break
@@ -118,15 +123,22 @@ Minimal MCMD Loop
 The example uses a simple grand-canonical score for CO:
 ``E - mu_CO * N_CO``. An adsorption trial adds one CO molecule with carbon at an
 empty voxel-sampled surface site and oxygen pointing away from the nanoparticle
-center. A desorption trial removes one occupied CO molecule. The trial is
-accepted with a Metropolis criterion, then a short Langevin MD segment is run
-after every decision. Rejected trials restore the previous accepted structure
-before the MD segment.
+center. The newly inserted CO is optimized while the nanoparticle is fixed. A
+desorption trial removes one occupied CO molecule. The trial is accepted with a
+Metropolis criterion, then a short Langevin MD segment is run after every
+decision. Rejected trials restore the previous accepted structure before the MD
+segment. The voxel grid is rebuilt from the current nanoparticle geometry each
+cycle, excluding CO atoms, so adsorption proposals follow nanoparticle motion.
+Existing CO molecules block nearby proposed sites through ``--site-block-radius``.
 
 After each step, the CO chemical potential is nudged toward the requested
 coverage target. Coverage is counted as ``N_CO / N_surface_atoms``, where
 surface atoms are nanoparticle atoms with coordination number below 11 by
-default.
+default. Adsorption is capped by ``--max-coverage`` times this same surface
+atom count, so the sampled voxel-site count controls where CO can be placed but
+does not allow unbounded multilayer growth. The adaptive chemical potential is
+also clamped by ``--mu-min`` and ``--mu-max`` to keep short tutorial runs from
+overshooting badly.
 
 .. code-block:: python
 
@@ -154,7 +166,7 @@ Run a short ORB-V3 CPU MCMD example with:
 .. code-block:: bash
 
    python examples/mc/orb_v3_co_mcmd.py --natoms 55 --steps 100 \
-       --calculator orb-v3 --device cpu --orb-neighbors 20 \
+       --calculator orb-v3 --device cpu --orb-model-size inf \
        --temperature 500 --target-coverage 0.5 --md-steps 50 \
        --quickstart-figures
 

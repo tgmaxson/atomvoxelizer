@@ -186,6 +186,8 @@ def test_co_adsorption_mcmd_runs_md_after_accept_and_reject():
         co_chemical_potential=-100.0,
         md_steps=50,
         seed=3,
+        rebuild_sites_each_step=False,
+        optimize_added_co=False,
         md_runner=md_runner,
     )
 
@@ -274,9 +276,104 @@ def test_co_mcmd_can_desorb_when_adsorbate_is_not_assigned_to_site():
         co_chemical_potential=-100.0,
         adsorption_probability=0.0,
         md_steps=1,
+        rebuild_sites_each_step=False,
+        optimize_added_co=False,
         md_runner=md_runner,
     )
 
     assert trajectory[0, 1] == -1.0
     assert trajectory[0, 3] == 0.0
     assert example.co_carbon_indices(final_atoms).size == 0
+
+
+def test_co_mcmd_caps_adsorption_by_surface_atom_count():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms("Pt", positions=[[5.0, 5.0, 5.0]], cell=np.eye(3) * 12.0)
+    trial_sites = np.array([[5.0, 5.0, 7.0], [5.0, 7.0, 5.0], [7.0, 5.0, 5.0]])
+
+    def md_runner(atoms, calculator, temperature, steps, timestep_fs, friction):
+        return example.potential_energy(atoms, calculator)
+
+    final_atoms, trajectory = example.run_co_adsorption_mcmd(
+        atoms,
+        trial_sites,
+        calculator=example.make_emt_calculator(),
+        steps=6,
+        temperature=300.0,
+        co_chemical_potential=100.0,
+        adsorption_probability=1.0,
+        md_steps=1,
+        rebuild_sites_each_step=False,
+        optimize_added_co=False,
+        md_runner=md_runner,
+        max_coverage=1.0,
+    )
+
+    assert trajectory[:, 3].max() <= 1.0
+    assert trajectory[:, 4].max() <= 1.0
+    assert example.co_carbon_indices(final_atoms).size <= 1
+
+
+def test_co_mcmd_clamps_adaptive_chemical_potential():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms("Pt", positions=[[5.0, 5.0, 5.0]], cell=np.eye(3) * 12.0)
+    trial_sites = np.array([[5.0, 5.0, 7.0]])
+
+    def md_runner(atoms, calculator, temperature, steps, timestep_fs, friction):
+        return example.potential_energy(atoms, calculator)
+
+    _, trajectory = example.run_co_adsorption_mcmd(
+        atoms,
+        trial_sites,
+        calculator=example.make_emt_calculator(),
+        steps=4,
+        temperature=300.0,
+        co_chemical_potential=0.0,
+        chemical_potential_step=10.0,
+        chemical_potential_min=-0.25,
+        chemical_potential_max=0.25,
+        md_steps=1,
+        rebuild_sites_each_step=False,
+        optimize_added_co=False,
+        md_runner=md_runner,
+    )
+
+    assert trajectory[:, 7].min() >= -0.25
+    assert trajectory[:, 7].max() <= 0.25
+
+
+def test_co_blocks_nearby_adsorption_sites_by_radius():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms("Pt", positions=[[5.0, 5.0, 5.0]], cell=np.eye(3) * 12.0)
+    adsorbed = example.add_co_adsorbate(atoms, [5.0, 5.0, 7.0], bond_length=1.15)
+    sites = np.array([[5.2, 5.0, 7.0], [9.0, 9.0, 9.0]])
+
+    occupied, assignments = example.site_occupancy(adsorbed, sites, cutoff=2.5)
+
+    assert occupied.tolist() == [True, False]
+    assert assignments == {0: 1}
+
+
+def test_co_only_optimization_keeps_substrate_fixed():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms("Pt", positions=[[5.0, 5.0, 5.0]], cell=np.eye(3) * 12.0)
+    adsorbed = example.add_co_adsorbate(atoms, [5.0, 5.0, 7.0], bond_length=1.15)
+    substrate_before = adsorbed.positions[0].copy()
+
+    energy = example.relax_new_adsorbate(
+        adsorbed,
+        example.make_emt_calculator(),
+        adsorbate_indices=[1, 2],
+        steps=2,
+    )
+
+    assert np.isfinite(energy)
+    np.testing.assert_allclose(adsorbed.positions[0], substrate_before)

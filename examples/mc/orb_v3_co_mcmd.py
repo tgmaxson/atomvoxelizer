@@ -40,7 +40,7 @@ def build_wulff_nanoparticle(symbol="Pt", natoms=201, lattice_constant=3.92, sha
     return SingleCrystal(surface_energies, primitive_structure=primitive, natoms=natoms).atoms
 
 
-def put_cluster_in_voxel_cell(atoms, padding=6.0):
+def put_cluster_in_voxel_cell(atoms, padding=20.0):
     """Return a copy of a finite cluster translated into a padded cubic cell."""
     atoms = atoms.copy()
     positions = atoms.positions
@@ -73,7 +73,7 @@ def build_coordination_surface_grid(atoms, resolution=0.35, shell_scale=1.4, cor
     return grid
 
 
-def sample_surface_trial_sites(grid, min_count=2.5, max_count=3.5, max_sites=500, min_dist=0.6, seed=7):
+def sample_surface_trial_sites(grid, min_count=0.5, max_count=100.0, max_sites=500, min_dist=0.6, seed=7):
     """Sample candidate CO adsorption sites from the coordination surface."""
     sites = []
     for position in grid.sample_voxels_in_range(min_count, max_count, min_dist=min_dist, seed=seed):
@@ -125,7 +125,7 @@ def make_emt_score():
     return make_calculator_score(make_emt_calculator())
 
 
-def make_orb_v3_calculator(device="cpu", max_num_neighbors=20):
+def make_orb_v3_calculator(device="cpu", model_size="inf", max_num_neighbors=None):
     """Create an ORB-V3 ASE calculator when ORB models are installed."""
     try:
         from orb_models.forcefield import pretrained
@@ -136,7 +136,11 @@ def make_orb_v3_calculator(device="cpu", max_num_neighbors=20):
             "in the environment where you run this example."
         ) from exc
 
-    if max_num_neighbors == 20 and hasattr(pretrained, "orb_v3_conservative_20_omat"):
+    if model_size not in {"20", "inf"}:
+        raise ValueError("model_size must be '20' or 'inf'")
+    if model_size == "20":
+        if max_num_neighbors is None:
+            max_num_neighbors = 20
         model, adapter = pretrained.orb_v3_conservative_20_omat(device=device)
     else:
         model, adapter = pretrained.orb_v3_conservative_inf_omat(device=device)
@@ -156,6 +160,24 @@ def relax_atoms(atoms, calculator, fmax=0.05, steps=50):
     atoms.calc = calculator
     optimizer = FIRE(atoms, logfile=None)
     optimizer.run(fmax=fmax, steps=steps)
+    return float(atoms.get_potential_energy())
+
+
+def relax_new_adsorbate(atoms, calculator, adsorbate_indices, fmax=0.05, steps=50):
+    """Relax selected adsorbate atoms while keeping all other atoms fixed."""
+    if steps <= 0:
+        return potential_energy(atoms, calculator)
+    from ase.constraints import FixAtoms
+    from ase.optimize import FIRE
+
+    adsorbate_indices = {int(index) for index in adsorbate_indices}
+    fixed_indices = [index for index in range(len(atoms)) if index not in adsorbate_indices]
+    old_constraint = atoms.constraints
+    atoms.set_constraint(FixAtoms(indices=fixed_indices))
+    atoms.calc = calculator
+    optimizer = FIRE(atoms, logfile=None)
+    optimizer.run(fmax=fmax, steps=int(steps))
+    atoms.set_constraint(old_constraint)
     return float(atoms.get_potential_energy())
 
 
@@ -333,13 +355,50 @@ def substrate_indices(atoms):
     return np.array([index for index, atom in enumerate(atoms) if atom.symbol not in {"C", "O"}], dtype=int)
 
 
+def substrate_atoms(atoms):
+    """Return a copy containing only nanoparticle atoms."""
+    substrate = atoms[substrate_indices(atoms)]
+    substrate.set_cell(atoms.cell)
+    substrate.set_pbc(atoms.pbc)
+    return substrate
+
+
 def co_carbon_indices(atoms):
     """Return carbon indices used to count adsorbed CO molecules."""
     return np.array([index for index, atom in enumerate(atoms) if atom.symbol == "C"], dtype=int)
 
 
-def site_occupancy(atoms, trial_sites, cutoff=1.2):
-    """Assign adsorbed CO carbon atoms to nearest voxel trial sites."""
+def sample_current_adsorption_sites(
+    atoms,
+    resolution=0.35,
+    shell_scale=1.4,
+    core_scale=1.1,
+    min_count=0.5,
+    max_count=100.0,
+    max_sites=500,
+    min_dist=0.6,
+    seed=7,
+):
+    """Rebuild the voxel surface grid and sample adsorption sites for the current nanoparticle."""
+    nanoparticle = substrate_atoms(atoms)
+    grid = build_coordination_surface_grid(
+        nanoparticle,
+        resolution=resolution,
+        shell_scale=shell_scale,
+        core_scale=core_scale,
+    )
+    return sample_surface_trial_sites(
+        grid,
+        min_count=min_count,
+        max_count=max_count,
+        max_sites=max_sites,
+        min_dist=min_dist,
+        seed=seed,
+    )
+
+
+def site_occupancy(atoms, trial_sites, cutoff=2.5):
+    """Return adsorption sites blocked by nearby CO carbon atoms."""
     trial_sites = np.asarray(trial_sites, dtype=float)
     occupied = np.zeros(len(trial_sites), dtype=bool)
     assignments = {}
@@ -447,15 +506,29 @@ def run_co_adsorption_mcmd(
     temperature=500.0,
     co_chemical_potential=-1.0,
     target_coverage=0.5,
-    chemical_potential_step=0.05,
+    max_coverage=1.0,
+    chemical_potential_step=0.005,
+    chemical_potential_min=-5.0,
+    chemical_potential_max=5.0,
     md_steps=50,
     md_timestep_fs=1.0,
     md_friction=0.02,
     adsorption_probability=0.5,
-    site_cutoff=1.2,
+    rebuild_sites_each_step=True,
+    grid_resolution=0.35,
+    shell_scale=1.4,
+    core_scale=1.1,
+    min_count=0.5,
+    max_count=100.0,
+    max_sites=500,
+    site_min_dist=0.6,
+    site_block_radius=2.5,
     surface_cn_threshold=11,
     surface_cn_cutoff=None,
     co_bond_length=1.15,
+    optimize_added_co=True,
+    co_opt_fmax=0.05,
+    co_opt_steps=50,
     seed=11,
     return_frames=False,
     progress_every=10,
@@ -464,15 +537,25 @@ def run_co_adsorption_mcmd(
     """Run simple grand-canonical CO adsorption/desorption MCMD.
 
     Adsorption attempts add one CO molecule at an empty voxel-sampled surface
-    site. Desorption attempts remove one adsorbed CO. Coverage is ``N_CO``
-    divided by the number of nanoparticle atoms with CN < 11 by default. The
-    Metropolis score is ``E - mu_CO * N_CO``. After every MC decision, accepted
-    or rejected, the accepted state is propagated by a short MD segment.
+    site. By default the voxel grid and site list are rebuilt from the current
+    nanoparticle geometry every MC cycle, excluding CO atoms. Existing CO blocks
+    adsorption attempts within ``site_block_radius``. Desorption attempts remove
+    one adsorbed CO. Coverage is ``N_CO`` divided by the number of nanoparticle
+    atoms with CN < 11 by default, and adsorption is capped at
+    ``max_coverage`` times that surface-atom count. The Metropolis score is
+    ``E - mu_CO * N_CO``. After every MC decision, accepted or rejected, the
+    accepted state is propagated by a short MD segment.
     """
     if temperature <= 0.0:
         raise ValueError("temperature must be positive")
     if not 0.0 <= target_coverage <= 1.0:
         raise ValueError("target_coverage must be between 0 and 1")
+    if max_coverage <= 0.0:
+        raise ValueError("max_coverage must be positive")
+    if target_coverage > max_coverage:
+        raise ValueError("target_coverage cannot exceed max_coverage")
+    if chemical_potential_min > chemical_potential_max:
+        raise ValueError("chemical_potential_min cannot exceed chemical_potential_max")
     trial_sites = np.asarray(trial_sites, dtype=float)
     if trial_sites.ndim != 2 or trial_sites.shape[1] != 3 or len(trial_sites) == 0:
         raise ValueError("trial_sites must have shape (N, 3)")
@@ -488,11 +571,29 @@ def run_co_adsorption_mcmd(
     frames = []
 
     for step in range(int(steps)):
-        occupied, assignments = site_occupancy(current, trial_sites, cutoff=site_cutoff)
+        if rebuild_sites_each_step:
+            trial_sites = sample_current_adsorption_sites(
+                current,
+                resolution=grid_resolution,
+                shell_scale=shell_scale,
+                core_scale=core_scale,
+                min_count=min_count,
+                max_count=max_count,
+                max_sites=max_sites,
+                min_dist=site_min_dist,
+                seed=seed + step,
+            )
+        occupied, assignments = site_occupancy(current, trial_sites, cutoff=site_block_radius)
         empty_sites = np.flatnonzero(~occupied)
         occupied_sites = np.flatnonzero(occupied)
         current_carbon_indices = co_carbon_indices(current)
-        can_adsorb = len(empty_sites) > 0 and len(current_carbon_indices) < len(trial_sites)
+        current_surface_count = surface_atom_count(
+            current,
+            cn_threshold=surface_cn_threshold,
+            cutoff=surface_cn_cutoff,
+        )
+        max_co = max(0, int(math.floor(max_coverage * current_surface_count)))
+        can_adsorb = len(empty_sites) > 0 and len(current_carbon_indices) < max_co
         can_desorb = len(current_carbon_indices) > 0
 
         if not can_adsorb and not can_desorb:
@@ -509,6 +610,14 @@ def run_co_adsorption_mcmd(
         if action == "adsorb":
             site_index = int(empty_sites[int(rng.integers(len(empty_sites)))])
             trial = add_co_adsorbate(current, trial_sites[site_index], bond_length=co_bond_length)
+            if optimize_added_co:
+                relax_new_adsorbate(
+                    trial,
+                    calculator,
+                    adsorbate_indices=[len(trial) - 2, len(trial) - 1],
+                    fmax=co_opt_fmax,
+                    steps=co_opt_steps,
+                )
         else:
             if len(occupied_sites) > 0:
                 site_index = int(occupied_sites[int(rng.integers(len(occupied_sites)))])
@@ -544,6 +653,7 @@ def run_co_adsorption_mcmd(
         )
         coverage = coverage_fraction(current, current_surface_count)
         mu += float(chemical_potential_step) * (float(target_coverage) - coverage)
+        mu = float(np.clip(mu, chemical_potential_min, chemical_potential_max))
         current_grand = current_energy - mu * current_n_co
         acceptance_ratio = accepted / (step + 1)
         action_code = 1.0 if action == "adsorb" else -1.0
@@ -597,12 +707,13 @@ def main():
     parser.add_argument("--symbol", default="Pt")
     parser.add_argument("--natoms", type=int, default=55, help="Target nanoparticle atom count; WulffPack returns a shell-compatible count.")
     parser.add_argument("--shape", choices=("cube", "wulff"), default="cube")
+    parser.add_argument("--padding", type=float, default=20.0, help="Vacuum padding around the finite nanoparticle in Angstrom.")
     parser.add_argument("--resolution", type=float, default=0.35)
     parser.add_argument("--shell-scale", type=float, default=1.4)
     parser.add_argument("--core-scale", type=float, default=1.1)
-    parser.add_argument("--min-count", type=float, default=2.5)
-    parser.add_argument("--max-count", type=float, default=3.5)
-    parser.add_argument("--max-sites", type=int, default=80)
+    parser.add_argument("--min-count", type=float, default=0.5, help="Minimum voxel shell count for adsorption sites.")
+    parser.add_argument("--max-count", type=float, default=100.0, help="Maximum voxel shell count for adsorption sites.")
+    parser.add_argument("--max-sites", type=int, default=500)
     parser.add_argument("--steps", type=int, default=100)
     parser.add_argument(
         "--temperature",
@@ -611,12 +722,17 @@ def main():
         help="Metropolis and MD temperature in Kelvin.",
     )
     parser.add_argument("--mu-co", type=float, default=-1.0, help="Initial CO chemical potential in eV.")
-    parser.add_argument("--target-coverage", type=float, default=0.5, help="Target fractional coverage of sampled surface sites.")
-    parser.add_argument("--mu-step", type=float, default=0.05, help="Feedback step used to adjust the CO chemical potential.")
+    parser.add_argument("--target-coverage", type=float, default=0.5, help="Target CO coverage relative to nanoparticle surface atoms.")
+    parser.add_argument("--max-coverage", type=float, default=1.0, help="Maximum allowed CO coverage relative to nanoparticle surface atoms.")
+    parser.add_argument("--mu-step", type=float, default=0.005, help="Feedback step used to adjust the CO chemical potential.")
+    parser.add_argument("--mu-min", type=float, default=-5.0, help="Lower clamp for the adaptive CO chemical potential in eV.")
+    parser.add_argument("--mu-max", type=float, default=5.0, help="Upper clamp for the adaptive CO chemical potential in eV.")
     parser.add_argument("--md-steps", type=int, default=50, help="MD steps run after every MC decision.")
     parser.add_argument("--md-timestep-fs", type=float, default=1.0)
     parser.add_argument("--md-friction", type=float, default=0.02)
-    parser.add_argument("--site-cutoff", type=float, default=1.2, help="Distance cutoff for assigning CO to sampled sites.")
+    parser.add_argument("--site-min-dist", type=float, default=0.6, help="Minimum distance between sampled adsorption sites.")
+    parser.add_argument("--site-block-radius", type=float, default=2.5, help="CO carbon atoms block adsorption sites within this radius.")
+    parser.add_argument("--no-rebuild-sites", action="store_true", help="Reuse the initial adsorption-site sample instead of rebuilding it each MC cycle.")
     parser.add_argument("--surface-cn-threshold", type=int, default=11, help="Surface atoms have nanoparticle CN below this value.")
     parser.add_argument(
         "--surface-cn-cutoff",
@@ -625,11 +741,18 @@ def main():
         help="Distance cutoff for nanoparticle coordination numbers. Default uses covalent radii.",
     )
     parser.add_argument("--co-bond-length", type=float, default=1.15)
+    parser.add_argument("--no-initial-opt", action="store_true", help="Skip optimization of the clean nanoparticle before site generation.")
+    parser.add_argument("--initial-opt-fmax", type=float, default=0.05, help="Initial nanoparticle optimizer force threshold in eV/A.")
+    parser.add_argument("--initial-opt-steps", type=int, default=100, help="Maximum optimizer steps for the clean nanoparticle.")
+    parser.add_argument("--no-co-opt", action="store_true", help="Skip CO-only optimization after adsorption insertion.")
+    parser.add_argument("--co-opt-fmax", type=float, default=0.05, help="CO-only optimizer force threshold in eV/A.")
+    parser.add_argument("--co-opt-steps", type=int, default=50, help="Maximum optimizer steps for newly inserted CO.")
     parser.add_argument("--seed", type=int, default=11)
     parser.add_argument("--progress-every", type=int, default=10, help="Print MCMD progress every N steps. Use 0 to disable.")
     parser.add_argument("--calculator", choices=("orb-v3", "emt"), default="orb-v3")
     parser.add_argument("--device", default="cpu", help="Device passed to ORB-V3.")
-    parser.add_argument("--orb-neighbors", type=int, default=20, help="Maximum ORB neighbor count.")
+    parser.add_argument("--orb-model-size", choices=("inf", "20"), default="inf", help="Conservative ORB-V3 model size.")
+    parser.add_argument("--orb-neighbors", type=int, default=None, help="Maximum ORB neighbor count. Defaults to 20 for --orb-model-size 20.")
     parser.add_argument("--plot", default=None, help="Optional path for a 3D plot of atoms and trial sites.")
     parser.add_argument("--state-plot", default=None, help="Optional path for an ASE final-state plot.")
     parser.add_argument(
@@ -650,7 +773,22 @@ def main():
         if args.state_plot is None:
             args.state_plot = str(final_figure)
 
-    atoms = put_cluster_in_voxel_cell(build_wulff_nanoparticle(args.symbol, args.natoms, shape=args.shape))
+    atoms = put_cluster_in_voxel_cell(build_wulff_nanoparticle(args.symbol, args.natoms, shape=args.shape), padding=args.padding)
+    if args.calculator == "orb-v3":
+        calculator = make_orb_v3_calculator(
+            args.device,
+            model_size=args.orb_model_size,
+            max_num_neighbors=args.orb_neighbors,
+        )
+    else:
+        calculator = make_emt_calculator()
+    if not args.no_initial_opt and args.initial_opt_steps > 0:
+        print(
+            f"optimizing initial nanoparticle: fmax={args.initial_opt_fmax}, "
+            f"steps={args.initial_opt_steps}",
+            flush=True,
+        )
+        relax_atoms(atoms, calculator, fmax=args.initial_opt_fmax, steps=args.initial_opt_steps)
     initial_atoms = atoms.copy()
     initial_positions = atoms.positions.copy()
     initial_radial_variance = radial_variance(atoms)
@@ -665,12 +803,9 @@ def main():
         min_count=args.min_count,
         max_count=args.max_count,
         max_sites=args.max_sites,
+        min_dist=args.site_min_dist,
         seed=args.seed,
     )
-    if args.calculator == "orb-v3":
-        calculator = make_orb_v3_calculator(args.device, max_num_neighbors=args.orb_neighbors)
-    else:
-        calculator = make_emt_calculator()
     mcmd_result = run_co_adsorption_mcmd(
         atoms,
         trial_sites,
@@ -679,14 +814,28 @@ def main():
         temperature=args.temperature,
         co_chemical_potential=args.mu_co,
         target_coverage=args.target_coverage,
+        max_coverage=args.max_coverage,
         chemical_potential_step=args.mu_step,
+        chemical_potential_min=args.mu_min,
+        chemical_potential_max=args.mu_max,
         md_steps=args.md_steps,
         md_timestep_fs=args.md_timestep_fs,
         md_friction=args.md_friction,
-        site_cutoff=args.site_cutoff,
+        rebuild_sites_each_step=not args.no_rebuild_sites,
+        grid_resolution=args.resolution,
+        shell_scale=args.shell_scale,
+        core_scale=args.core_scale,
+        min_count=args.min_count,
+        max_count=args.max_count,
+        max_sites=args.max_sites,
+        site_min_dist=args.site_min_dist,
+        site_block_radius=args.site_block_radius,
         surface_cn_threshold=args.surface_cn_threshold,
         surface_cn_cutoff=args.surface_cn_cutoff,
         co_bond_length=args.co_bond_length,
+        optimize_added_co=not args.no_co_opt,
+        co_opt_fmax=args.co_opt_fmax,
+        co_opt_steps=args.co_opt_steps,
         seed=args.seed,
         return_frames=bool(args.trajectory),
         progress_every=args.progress_every,
