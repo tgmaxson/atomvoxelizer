@@ -94,20 +94,17 @@ def radial_variance(atoms):
     return float(np.var(distances))
 
 
-def make_geometric_score(reference_positions, displacement_weight=1.0):
-    """Create a cheap sphere-forming placeholder score for the tutorial dry run.
-
-    ORB-V3 should be used for a physical MC run. This score only keeps the
-    example deterministic and runnable without downloading model weights. It
-    rewards a narrower radial distribution while penalizing excessive
-    displacement away from the starting lattice.
-    """
-    reference_positions = np.asarray(reference_positions, dtype=float).copy()
+def make_emt_score():
+    """Create an ASE EMT potential-energy scorer."""
+    try:
+        from ase.calculators.emt import EMT
+    except ImportError as exc:
+        raise SystemExit("EMT scoring requires ASE. Install ASE before running this example.") from exc
 
     def score(atoms):
-        displacement = atoms.positions - reference_positions
-        displacement_penalty = float(np.sum(displacement * displacement))
-        return radial_variance(atoms) + displacement_weight * displacement_penalty
+        if atoms.calc is None or not isinstance(atoms.calc, EMT):
+            atoms.calc = EMT()
+        return float(atoms.get_potential_energy())
 
     return score
 
@@ -133,8 +130,7 @@ def make_orb_v3_score(device="cpu"):
 
     def score(atoms):
         graph = adapter.from_ase_atoms(atoms)
-        with torch.no_grad():
-            output = model.predict(graph)
+        output = model.predict(graph)
         if isinstance(output, dict):
             for key in ("energy", "total_energy", "predicted_energy", "graph_energy"):
                 if key in output:
@@ -161,7 +157,7 @@ def run_minimal_mc(
 ):
     """Run a tiny Metropolis loop using voxel-sampled trial directions."""
     rng = np.random.default_rng(seed)
-    score_fn = make_geometric_score(atoms.positions) if score_fn is None else score_fn
+    score_fn = make_emt_score() if score_fn is None else score_fn
     movable = outer_atom_indices(atoms)
     current_score = score_fn(atoms)
     accepted = 0
@@ -260,11 +256,10 @@ def main():
     parser.add_argument("--shape", choices=("cube", "wulff"), default="cube")
     parser.add_argument("--resolution", type=float, default=0.35)
     parser.add_argument("--steps", type=int, default=50)
-    parser.add_argument("--temperature", type=float, default=0.05)
+    parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--max-displacement", type=float, default=0.35)
     parser.add_argument("--seed", type=int, default=11)
-    parser.add_argument("--score", choices=("geometric", "orb-v3"), default="geometric")
-    parser.add_argument("--displacement-weight", type=float, default=1.0)
+    parser.add_argument("--score", choices=("emt", "orb-v3"), default="emt")
     parser.add_argument("--device", default="cpu", help="Device passed to ORB-V3 when --score orb-v3 is used.")
     parser.add_argument("--plot", default=None, help="Optional path for a 3D plot of atoms and trial sites.")
     parser.add_argument(
@@ -282,7 +277,7 @@ def main():
     if args.score == "orb-v3":
         score_fn = make_orb_v3_score(args.device)
     else:
-        score_fn = make_geometric_score(initial_positions, displacement_weight=args.displacement_weight)
+        score_fn = make_emt_score()
     mc_result = run_minimal_mc(
         atoms,
         trial_sites,

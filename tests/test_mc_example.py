@@ -13,7 +13,7 @@ def load_mc_example():
     return module
 
 
-def test_minimal_mc_geometric_score_moves_atoms_without_accepting_everything():
+def test_minimal_mc_emt_score_moves_atoms_without_accepting_everything():
     ase = pytest.importorskip("ase")
     example = load_mc_example()
     atoms = ase.Atoms(
@@ -43,13 +43,13 @@ def test_minimal_mc_geometric_score_moves_atoms_without_accepting_everything():
         ]
     )
     initial_positions = atoms.positions.copy()
-    score = example.make_geometric_score(initial_positions)
+    score = example.make_emt_score()
 
     trajectory = example.run_minimal_mc(
         atoms,
         trial_sites,
         steps=100,
-        temperature=0.05,
+        temperature=5.0,
         max_displacement=0.35,
         seed=11,
         score_fn=score,

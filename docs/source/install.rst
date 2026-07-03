@@ -61,7 +61,7 @@ Optional Feature Map
      - ASE structure loading, CIF examples, Wulff and surface examples
    * - Quickstart tutorial
      - ``pip install ase wulffpack``; install ORB separately for ``--score orb-v3``
-     - Wulff nanoparticle construction and optional ORB-V3 scoring
+     - Wulff nanoparticle construction, EMT scoring, and optional ORB-V3 scoring
    * - Numba backend
      - ``pip install numba``
      - ``VoxelGridNumba``, ``FieldVoxelGridNumba``, ``VectorVoxelGridNumba``

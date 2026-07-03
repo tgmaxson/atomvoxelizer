@@ -119,9 +119,8 @@ Voxel-Guided MC Trial Moves
 
 ``examples/mc/orb_v3_wulff_mc.py`` builds a cube-like WulffPack nanoparticle,
 constructs a coordination-surface voxel mask, samples surface trial sites, and
-runs a minimal Monte Carlo loop that slowly lowers the radial variance. The
-default score is geometric so the example can run without ORB model weights;
-pass ``--score orb-v3`` after installing ORB to use the optional ORB-V3 scoring
+runs a minimal Monte Carlo loop. The default score is ASE EMT; pass
+``--score orb-v3`` after installing ORB to use the optional ORB-V3 scoring
 hook.
 
 .. code-block:: bash

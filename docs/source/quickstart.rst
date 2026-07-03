@@ -3,10 +3,9 @@ Quickstart Tutorial
 
 This tutorial builds a cube-like WulffPack nanoparticle, converts it into a
 voxel coordination-surface mask, samples trial positions from that mask, and
-runs a minimal Monte Carlo loop. The dry MC score slowly pushes the cube toward
-a more spherical radial distribution. The goal is to show how AtomVoxelizer
-supplies trial sites; a production MC workflow would replace the geometric
-score with an ORB-V3 energy evaluation.
+runs a minimal Monte Carlo loop. The default example uses ASE EMT as a small,
+local potential-energy scorer. ORB-V3 can be selected when the optional ORB
+dependencies are installed.
 
 The complete script is available at
 ``examples/mc/orb_v3_wulff_mc.py``.
@@ -43,7 +42,7 @@ particle is built from symmetry-compatible atomic shells.
    atoms = particle.atoms
 
 Using only the ``(100)`` facet creates a deliberately cube-like starting point.
-That makes the dry MC demonstration visible: accepted moves can reduce the
+That makes the MC demonstration visible: accepted moves can reduce the
 spread in atom distances from the nanoparticle center.
 
 WulffPack returns a finite cluster without a periodic simulation cell. A voxel
@@ -117,11 +116,10 @@ Minimal MC Loop
 
 The example chooses likely surface atoms by radial distance, picks a sampled
 voxel trial site, and moves the atom a short distance toward that site. The
-default score is a cheap geometric placeholder: it rewards a narrower radial
-distribution, but adds a displacement penalty so the cube does not instantly
-collapse into arbitrary trial sites. With the default ``temperature=0.05`` and
-``max_displacement=0.35``, the dry example is tuned to give roughly 10%
-acceptance for the small Pt cube.
+default score is the ASE EMT potential energy, which keeps the tutorial
+physically interpretable while still running quickly. With the default
+``temperature=0.2`` and ``max_displacement=0.35``, the Pt cube accepts a visible
+number of trial moves without accepting every trial.
 
 .. code-block:: python
 
@@ -132,20 +130,12 @@ acceptance for the small Pt cube.
    distances = np.linalg.norm(atoms.positions - center, axis=1)
    movable = np.flatnonzero(distances >= np.quantile(distances, 0.65))
 
-   reference_positions = atoms.positions.copy()
+   from ase.calculators.emt import EMT
 
-   def radial_variance(atoms):
-       center = atoms.positions.mean(axis=0)
-       distances = np.linalg.norm(atoms.positions - center, axis=1)
-       return float(np.var(distances))
+   atoms.calc = EMT()
 
-   def geometric_score(atoms, displacement_weight=1.0):
-       displacement = atoms.positions - reference_positions
-       displacement_penalty = float(np.sum(displacement * displacement))
-       return radial_variance(atoms) + displacement_weight * displacement_penalty
-
-   current_score = geometric_score(atoms)
-   beta = 1.0 / 0.05
+   current_score = atoms.get_potential_energy()
+   beta = 1.0 / 0.2
 
    atom_index = int(rng.choice(movable))
    target = trial_sites[int(rng.integers(len(trial_sites)))]
@@ -154,20 +144,20 @@ acceptance for the small Pt cube.
    direction *= min(1.0, 0.35 / np.linalg.norm(direction))
    atoms.positions[atom_index] = old_position + direction
 
-   trial_score = geometric_score(atoms)
+   trial_score = atoms.get_potential_energy()
    delta = trial_score - current_score
    accept = delta <= 0.0 or rng.random() < math.exp(-beta * delta)
    if not accept:
        atoms.positions[atom_index] = old_position
 
-In an ORB-V3 MC workflow, the voxel part stays the same. The scoring function
-is the part that changes: evaluate the old and trial structures with ORB-V3,
-then apply the usual Metropolis criterion to the energy difference.
+In an ORB-V3 MC workflow, the voxel part stays the same. Only the scoring
+function changes: evaluate the old and trial structures with ORB-V3, then apply
+the usual Metropolis criterion to the energy difference.
 
 Run The Example
 ---------------
 
-Run the dry tutorial example with:
+Run the EMT tutorial example with:
 
 .. code-block:: bash
 
@@ -176,7 +166,7 @@ Run the dry tutorial example with:
 
 The script prints the accepted move count, acceptance ratio, initial/final
 radial variance, and mean/max displacement from the starting structure so you
-can confirm that atoms actually moved during the dry run. It also writes an ASE
+can confirm that atoms actually moved during the run. It also writes an ASE
 trajectory by default:
 
 .. code-block:: text

@@ -60,6 +60,12 @@ Run the test suite before submitting a merge request:
 
    pytest tests/
 
+Run tests with the same coverage output used by GitLab CI:
+
+.. code-block:: bash
+
+   pytest --cov=atomvoxelizer --cov-report=term-missing --cov-report=xml:coverage.xml tests/
+
 Build the documentation locally when changing documentation or public APIs:
 
 .. code-block:: bash

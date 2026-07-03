@@ -43,6 +43,7 @@ docs = [
 dev = [
     "ase",
     "pytest",
+    "pytest-cov",
     "requests",
     "scikit-image",
     "sphinx",
@@ -65,3 +66,11 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["atomvoxelizer"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
