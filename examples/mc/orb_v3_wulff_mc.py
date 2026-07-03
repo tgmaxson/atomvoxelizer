@@ -9,6 +9,9 @@ import numpy as np
 from atomvoxelizer import VoxelGrid
 
 
+KB_EV_PER_K = 8.617333262145e-5
+
+
 def build_wulff_nanoparticle(symbol="Pt", natoms=201, lattice_constant=3.92, shape="cube"):
     """Build a finite fcc WulffPack particle."""
     try:
@@ -149,8 +152,9 @@ def run_minimal_mc(
     atoms,
     trial_sites,
     steps=50,
-    temperature=0.05,
+    temperature=900.0,
     max_displacement=0.35,
+    local_trial_radius=3.0,
     seed=11,
     score_fn=None,
     return_frames=False,
@@ -165,7 +169,7 @@ def run_minimal_mc(
     frames = []
     if temperature <= 0.0:
         raise ValueError("temperature must be positive")
-    beta = 1.0 / temperature
+    beta = 1.0 / (KB_EV_PER_K * temperature)
     if return_frames:
         initial = atoms.copy()
         initial.info.update(
@@ -182,8 +186,15 @@ def run_minimal_mc(
 
     for step in range(steps):
         atom_index = int(rng.choice(movable))
-        target = trial_sites[int(rng.integers(len(trial_sites)))]
         old_position = atoms.positions[atom_index].copy()
+        if local_trial_radius > 0.0:
+            trial_distances = np.linalg.norm(trial_sites - old_position, axis=1)
+            local_sites = trial_sites[trial_distances <= local_trial_radius]
+            if len(local_sites) == 0:
+                local_sites = trial_sites
+        else:
+            local_sites = trial_sites
+        target = local_sites[int(rng.integers(len(local_sites)))]
         direction = target - old_position
         distance = np.linalg.norm(direction)
         if distance > max_displacement:
@@ -252,14 +263,37 @@ def plot_trial_sites(atoms, trial_sites, output):
 def plot_initial_final_states(initial_atoms, final_atoms, output):
     """Render initial and final ASE structures side by side."""
     import matplotlib.pyplot as plt
+    from matplotlib import cm, colors
     from ase.visualize.plot import plot_atoms
 
     fig, axes = plt.subplots(1, 2, figsize=(8.0, 4.0), constrained_layout=True)
-    for ax, atoms, title in zip(axes, (initial_atoms, final_atoms), ("Initial", "Final")):
-        plot_atoms(atoms, ax, rotation="12x,18y,0z", radii=0.78)
-        ax.set_title(title)
+    displacements = np.linalg.norm(final_atoms.positions - initial_atoms.positions, axis=1)
+    vmax = max(float(displacements.max()), 1e-12)
+    norm = colors.Normalize(vmin=0.0, vmax=vmax)
+    cmap = plt.get_cmap("viridis")
+    final_colors = [cmap(norm(value)) for value in displacements]
+
+    plot_atoms(initial_atoms, axes[0], rotation="12x,18y,0z", radii=0.78, show_unit_cell=0)
+    axes[0].set_title("Initial")
+
+    plot_atoms(
+        final_atoms,
+        axes[1],
+        rotation="12x,18y,0z",
+        radii=0.78,
+        show_unit_cell=0,
+        colors=final_colors,
+    )
+    axes[1].set_title("Final, colored by displacement")
+
+    for ax in axes:
         ax.set_axis_off()
         ax.set_aspect("equal")
+
+    scalar_map = cm.ScalarMappable(norm=norm, cmap=cmap)
+    scalar_map.set_array([])
+    colorbar = fig.colorbar(scalar_map, ax=axes, shrink=0.75, pad=0.02)
+    colorbar.set_label("displacement [A]")
 
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -274,9 +308,25 @@ def main():
     parser.add_argument("--natoms", type=int, default=201)
     parser.add_argument("--shape", choices=("cube", "wulff"), default="cube")
     parser.add_argument("--resolution", type=float, default=0.35)
+    parser.add_argument("--shell-scale", type=float, default=1.4)
+    parser.add_argument("--core-scale", type=float, default=1.1)
+    parser.add_argument("--min-count", type=float, default=2.5)
+    parser.add_argument("--max-count", type=float, default=3.5)
+    parser.add_argument("--max-sites", type=int, default=500)
     parser.add_argument("--steps", type=int, default=50)
-    parser.add_argument("--temperature", type=float, default=0.2)
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=900.0,
+        help="Metropolis temperature in Kelvin.",
+    )
     parser.add_argument("--max-displacement", type=float, default=0.35)
+    parser.add_argument(
+        "--local-trial-radius",
+        type=float,
+        default=3.0,
+        help="Choose voxel trial sites within this distance of the selected atom. Use 0 for global sampling.",
+    )
     parser.add_argument("--seed", type=int, default=11)
     parser.add_argument("--score", choices=("emt", "orb-v3"), default="emt")
     parser.add_argument("--device", default="cpu", help="Device passed to ORB-V3 when --score orb-v3 is used.")
@@ -293,8 +343,19 @@ def main():
     initial_atoms = atoms.copy()
     initial_positions = atoms.positions.copy()
     initial_radial_variance = radial_variance(atoms)
-    grid = build_coordination_surface_grid(atoms, resolution=args.resolution)
-    trial_sites = sample_surface_trial_sites(grid, seed=args.seed)
+    grid = build_coordination_surface_grid(
+        atoms,
+        resolution=args.resolution,
+        shell_scale=args.shell_scale,
+        core_scale=args.core_scale,
+    )
+    trial_sites = sample_surface_trial_sites(
+        grid,
+        min_count=args.min_count,
+        max_count=args.max_count,
+        max_sites=args.max_sites,
+        seed=args.seed,
+    )
     if args.score == "orb-v3":
         score_fn = make_orb_v3_score(args.device)
     else:
@@ -305,6 +366,7 @@ def main():
         steps=args.steps,
         temperature=args.temperature,
         max_displacement=args.max_displacement,
+        local_trial_radius=args.local_trial_radius,
         seed=args.seed,
         score_fn=score_fn,
         return_frames=bool(args.trajectory),

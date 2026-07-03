@@ -118,8 +118,9 @@ The example chooses likely surface atoms by radial distance, picks a sampled
 voxel trial site, and moves the atom a short distance toward that site. The
 default score is the ASE EMT potential energy, which keeps the tutorial
 physically interpretable while still running quickly. With the default
-``temperature=0.2`` and ``max_displacement=0.35``, the Pt cube accepts a visible
-number of trial moves without accepting every trial.
+``temperature=900`` K and ``max_displacement=0.35``, the Pt cube accepts local
+surface moves without accepting every trial. The documentation image below uses
+1500 K and a slightly tighter shell mask to give an acceptance ratio near 20%.
 
 .. code-block:: python
 
@@ -135,7 +136,7 @@ number of trial moves without accepting every trial.
    atoms.calc = EMT()
 
    current_score = atoms.get_potential_energy()
-   beta = 1.0 / 0.2
+   beta = 1.0 / (8.617333262145e-5 * 1500.0)
 
    atom_index = int(rng.choice(movable))
    target = trial_sites[int(rng.integers(len(trial_sites)))]
@@ -162,7 +163,8 @@ Run the EMT tutorial example with:
 .. code-block:: bash
 
    python examples/mc/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 \
-       --steps 250 --score emt --temperature 0.2 \
+       --shell-scale 1.25 --core-scale 1.05 \
+       --steps 250 --score emt --temperature 1500 \
        --plot quickstart_wulff_mc_sites.png \
        --state-plot docs/source/_static/quickstart_wulff_mc_initial_final.png
 
@@ -175,9 +177,10 @@ trajectory by default:
 
    examples/mc/orb_v3_wulff_mc.traj
 
-The image below was generated from a 250-step EMT run. The accepted moves lower
-the radial variance from ``3.386237`` to ``3.102322`` for this deterministic
-seed.
+The image below was generated from that 250-step EMT run. The local trial-site
+selection gives ``48/250`` accepted moves, an acceptance ratio of ``0.192``.
+The final panel is colored by displacement from the initial structure so the
+surface rearrangement is visible.
 
 .. image:: _static/quickstart_wulff_mc_initial_final.png
    :alt: Initial and final ASE-rendered nanoparticle states after 250 EMT MC steps

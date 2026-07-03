@@ -16,6 +16,18 @@ https://keepachangelog.com/en/1.1.0/
 ### Fixed
 - None.
 
+## [0.2.12] - 2026-07-03
+
+### Changed
+- Changed the voxel-guided MC example temperature to Kelvin and converted
+  Metropolis sampling internally with ``kB*T``.
+- Changed MC trial-site selection to prefer voxel sites local to the selected
+  atom, avoiding strained global trial directions.
+- Added command-line controls for the MC shell/core mask multipliers, sampled
+  count range, maximum sampled sites, and local trial-site radius.
+- Updated the quickstart MC image to a 1500 K EMT run with about 20%
+  acceptance and final-state displacement coloring.
+
 ## [0.2.11] - 2026-07-02
 
 ### Added
