@@ -113,15 +113,10 @@ def make_emt_score():
 
 
 def make_orb_v3_score(device="cpu"):
-    """Create an ORB-V3 energy scorer when ORB models are installed.
-
-    The exact output object can vary between ORB releases, so the helper accepts
-    common energy-key names. If your local ORB version returns a different
-    object, adapt only this function; the voxel trial-site workflow is unchanged.
-    """
+    """Create an ORB-V3 ASE-calculator energy scorer when ORB models are installed."""
     try:
-        import torch
         from orb_models.forcefield import pretrained
+        from orb_models.forcefield.inference.calculator import ORBCalculator
     except ImportError as exc:
         raise SystemExit(
             "ORB-V3 scoring requires orb-models and torch. Install those packages "
@@ -130,20 +125,11 @@ def make_orb_v3_score(device="cpu"):
 
     model, adapter = pretrained.orb_v3_conservative_inf_omat(device=device)
     model.eval()
+    calculator = ORBCalculator(model, adapter, device=device)
 
     def score(atoms):
-        graph = adapter.from_ase_atoms(atoms)
-        output = model.predict(graph)
-        if isinstance(output, dict):
-            for key in ("energy", "total_energy", "predicted_energy", "graph_energy"):
-                if key in output:
-                    value = output[key]
-                    return float(value.detach().cpu().reshape(-1)[0])
-        for key in ("energy", "total_energy", "predicted_energy", "graph_energy"):
-            if hasattr(output, key):
-                value = getattr(output, key)
-                return float(value.detach().cpu().reshape(-1)[0])
-        raise RuntimeError(f"Could not find an energy field in ORB-V3 output of type {type(output)!r}")
+        atoms.calc = calculator
+        return float(atoms.get_potential_energy())
 
     return score
 
