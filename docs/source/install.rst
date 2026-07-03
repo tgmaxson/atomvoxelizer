@@ -60,8 +60,8 @@ Optional Feature Map
      - ``pip install "AtomVoxelizer[examples]"``
      - ASE structure loading, CIF examples, Wulff and surface examples
    * - Quickstart tutorial
-     - ``pip install ase wulffpack``; install ORB separately for ``--score orb-v3``
-     - Wulff nanoparticle construction, EMT scoring, and optional ORB-V3 scoring
+     - ``pip install ase wulffpack``; install ORB separately for ORB-V3 MCMD
+     - Wulff nanoparticle construction, voxel adsorption sites, and CO MCMD
    * - Numba backend
      - ``pip install numba``
      - ``VoxelGridNumba``, ``FieldVoxelGridNumba``, ``VectorVoxelGridNumba``

@@ -114,21 +114,23 @@ workflow to a periodic stepped Pt(211) slab:
    :alt: Periodic Pt(211) nearest-atom distance isosurface
    :width: 85%
 
-Voxel-Guided MC Trial Moves
----------------------------
+Voxel-Guided CO MCMD
+--------------------
 
-``examples/mc/orb_v3_wulff_mc.py`` builds a cube-like WulffPack nanoparticle,
-constructs a coordination-surface voxel mask, samples surface trial sites, and
-runs a minimal Monte Carlo loop. The default score is ASE EMT; pass
-``--score orb-v3`` after installing ORB to use the optional ORB-V3 scoring
-hook.
+``examples/mc/orb_v3_co_mcmd.py`` builds a small cube-like WulffPack
+nanoparticle, constructs a coordination-surface voxel mask, samples adsorption
+sites, and runs CO adsorption/desorption MCMD. The default calculator is the
+conservative ORB-V3 20-neighbor model on CPU. ASE EMT is available with
+``--calculator emt`` for quick control-flow checks.
 
 .. code-block:: bash
 
-   python examples/mc/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 --steps 50
+   python examples/mc/orb_v3_co_mcmd.py --natoms 55 --steps 100 \
+       --calculator orb-v3 --device cpu --orb-neighbors 20 \
+       --temperature 500 --target-coverage 0.5 --md-steps 50
 
-By default the script writes ``examples/mc/orb_v3_wulff_mc.traj`` for viewing
-the MC path with ASE.
+By default the script writes ``examples/mc/orb_v3_co_mcmd.traj`` for viewing
+the MCMD path with ASE.
 
 The step-by-step explanation is in :doc:`quickstart`.
 

@@ -8,10 +8,13 @@ https://keepachangelog.com/en/1.1.0/
 ## [Unreleased]
 
 ### Added
-- None.
+- Added a voxel-guided CO adsorption/desorption MCMD nanoparticle example using
+  ORB-V3 CPU by default.
 
 ### Changed
-- None.
+- Renamed the previous Wulff nanoparticle MC example to
+  ``examples/mc/orb_v3_co_mcmd.py`` and updated the quickstart around MCMD
+  coverage control.
 
 ### Fixed
 - None.

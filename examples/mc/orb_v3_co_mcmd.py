@@ -71,7 +71,7 @@ def build_coordination_surface_grid(atoms, resolution=0.35, shell_scale=1.4, cor
 
 
 def sample_surface_trial_sites(grid, min_count=2.5, max_count=3.5, max_sites=500, min_dist=0.6, seed=7):
-    """Sample candidate MC trial destinations from the coordination surface."""
+    """Sample candidate CO adsorption sites from the coordination surface."""
     sites = []
     for position in grid.sample_voxels_in_range(min_count, max_count, min_dist=min_dist, seed=seed):
         sites.append(np.asarray(position, dtype=float))
@@ -122,7 +122,7 @@ def make_emt_score():
     return make_calculator_score(make_emt_calculator())
 
 
-def make_orb_v3_calculator(device="cpu"):
+def make_orb_v3_calculator(device="cpu", max_num_neighbors=20):
     """Create an ORB-V3 ASE calculator when ORB models are installed."""
     try:
         from orb_models.forcefield import pretrained
@@ -133,9 +133,12 @@ def make_orb_v3_calculator(device="cpu"):
             "in the environment where you run this example."
         ) from exc
 
-    model, adapter = pretrained.orb_v3_conservative_inf_omat(device=device)
+    if max_num_neighbors == 20 and hasattr(pretrained, "orb_v3_conservative_20_omat"):
+        model, adapter = pretrained.orb_v3_conservative_20_omat(device=device)
+    else:
+        model, adapter = pretrained.orb_v3_conservative_inf_omat(device=device)
     model.eval()
-    return ORBCalculator(model, adapter, device=device)
+    return ORBCalculator(model, adapter, device=device, max_num_neighbors=max_num_neighbors)
 
 
 def make_orb_v3_score(device="cpu"):
@@ -301,7 +304,7 @@ def plot_final_state(atoms, output):
 
     fig, ax = plt.subplots(figsize=(5.6, 5.0), constrained_layout=True)
     plot_atoms(atoms, ax, rotation="12x,18y,0z", radii=0.78, show_unit_cell=0)
-    ax.set_title("Final relaxed MC state")
+    ax.set_title("Final MCMD state")
     ax.set_axis_off()
     ax.set_aspect("equal")
 
@@ -317,43 +320,267 @@ def plot_initial_final_states(initial_atoms, final_atoms, output):
     return plot_final_state(final_atoms, output)
 
 
+def substrate_indices(atoms):
+    """Return indices of nanoparticle atoms, excluding adsorbed CO atoms."""
+    return np.array([index for index, atom in enumerate(atoms) if atom.symbol not in {"C", "O"}], dtype=int)
+
+
+def co_carbon_indices(atoms):
+    """Return carbon indices used to count adsorbed CO molecules."""
+    return np.array([index for index, atom in enumerate(atoms) if atom.symbol == "C"], dtype=int)
+
+
+def site_occupancy(atoms, trial_sites, cutoff=1.2):
+    """Assign adsorbed CO carbon atoms to nearest voxel trial sites."""
+    trial_sites = np.asarray(trial_sites, dtype=float)
+    occupied = np.zeros(len(trial_sites), dtype=bool)
+    assignments = {}
+    if len(trial_sites) == 0:
+        return occupied, assignments
+
+    for carbon_index in co_carbon_indices(atoms):
+        distances = np.linalg.norm(trial_sites - atoms.positions[carbon_index], axis=1)
+        site_index = int(np.argmin(distances))
+        if distances[site_index] <= cutoff and not occupied[site_index]:
+            occupied[site_index] = True
+            assignments[site_index] = int(carbon_index)
+    return occupied, assignments
+
+
+def coverage_fraction(atoms, trial_sites, cutoff=1.2):
+    """Return fractional CO coverage of sampled surface sites."""
+    if len(trial_sites) == 0:
+        return 0.0
+    occupied, _assignments = site_occupancy(atoms, trial_sites, cutoff=cutoff)
+    return float(np.count_nonzero(occupied) / len(trial_sites))
+
+
+def add_co_adsorbate(atoms, site, bond_length=1.15, height=0.0):
+    """Return a copy with one CO molecule placed with C at the selected site."""
+    from ase import Atoms
+
+    trial = atoms.copy()
+    substrate = substrate_indices(trial)
+    center = trial.positions[substrate].mean(axis=0) if len(substrate) else trial.positions.mean(axis=0)
+    normal = np.asarray(site, dtype=float) - center
+    norm = np.linalg.norm(normal)
+    if norm == 0.0:
+        normal = np.array([0.0, 0.0, 1.0])
+    else:
+        normal = normal / norm
+    carbon_position = np.asarray(site, dtype=float) + height * normal
+    oxygen_position = carbon_position + bond_length * normal
+    trial += Atoms("CO", positions=[carbon_position, oxygen_position])
+    trial.set_cell(atoms.cell)
+    trial.set_pbc(atoms.pbc)
+    return trial
+
+
+def remove_co_adsorbate(atoms, carbon_index):
+    """Return a copy with the CO molecule containing ``carbon_index`` removed."""
+    trial = atoms.copy()
+    carbon_position = trial.positions[int(carbon_index)]
+    oxygen_indices = [index for index, atom in enumerate(trial) if atom.symbol == "O"]
+    if not oxygen_indices:
+        raise ValueError("No oxygen atom found for CO desorption")
+    distances = np.linalg.norm(trial.positions[oxygen_indices] - carbon_position, axis=1)
+    oxygen_index = int(oxygen_indices[int(np.argmin(distances))])
+    for index in sorted([int(carbon_index), oxygen_index], reverse=True):
+        del trial[index]
+    return trial
+
+
+def potential_energy(atoms, calculator):
+    """Evaluate potential energy with an ASE calculator."""
+    atoms.calc = calculator
+    return float(atoms.get_potential_energy())
+
+
+def run_md_segment(atoms, calculator, temperature=500.0, steps=50, timestep_fs=1.0, friction=0.02):
+    """Run a short Langevin MD segment and return the final potential energy."""
+    atoms.calc = calculator
+    if steps <= 0:
+        return potential_energy(atoms, calculator)
+    from ase import units
+    from ase.md.langevin import Langevin
+
+    dynamics = Langevin(atoms, timestep_fs * units.fs, temperature_K=temperature, friction=friction)
+    dynamics.run(int(steps))
+    return potential_energy(atoms, calculator)
+
+
+def run_co_adsorption_mcmd(
+    atoms,
+    trial_sites,
+    calculator,
+    steps=100,
+    temperature=500.0,
+    co_chemical_potential=-1.0,
+    target_coverage=0.5,
+    chemical_potential_step=0.05,
+    md_steps=50,
+    md_timestep_fs=1.0,
+    md_friction=0.02,
+    adsorption_probability=0.5,
+    site_cutoff=1.2,
+    co_bond_length=1.15,
+    seed=11,
+    return_frames=False,
+    progress_every=10,
+    md_runner=None,
+):
+    """Run simple grand-canonical CO adsorption/desorption MCMD.
+
+    Adsorption attempts add one CO molecule at an empty voxel-sampled surface
+    site. Desorption attempts remove one adsorbed CO. The Metropolis score is
+    ``E - mu_CO * N_CO``. After every MC decision, accepted or rejected, the
+    accepted state is propagated by a short MD segment.
+    """
+    if temperature <= 0.0:
+        raise ValueError("temperature must be positive")
+    if not 0.0 <= target_coverage <= 1.0:
+        raise ValueError("target_coverage must be between 0 and 1")
+    trial_sites = np.asarray(trial_sites, dtype=float)
+    if trial_sites.ndim != 2 or trial_sites.shape[1] != 3 or len(trial_sites) == 0:
+        raise ValueError("trial_sites must have shape (N, 3)")
+
+    rng = np.random.default_rng(seed)
+    md_runner = run_md_segment if md_runner is None else md_runner
+    beta = 1.0 / (KB_EV_PER_K * temperature)
+    current = atoms.copy()
+    current_energy = potential_energy(current, calculator)
+    mu = float(co_chemical_potential)
+    accepted = 0
+    records = []
+    frames = []
+
+    for step in range(int(steps)):
+        occupied, assignments = site_occupancy(current, trial_sites, cutoff=site_cutoff)
+        empty_sites = np.flatnonzero(~occupied)
+        occupied_sites = np.flatnonzero(occupied)
+
+        if len(empty_sites) == 0 and len(occupied_sites) == 0:
+            raise RuntimeError("No adsorption or desorption moves are available")
+        if len(empty_sites) == 0:
+            action = "desorb"
+        elif len(occupied_sites) == 0:
+            action = "adsorb"
+        else:
+            action = "adsorb" if rng.random() < adsorption_probability else "desorb"
+
+        old_n_co = len(co_carbon_indices(current))
+        old_grand = current_energy - mu * old_n_co
+        if action == "adsorb":
+            site_index = int(empty_sites[int(rng.integers(len(empty_sites)))])
+            trial = add_co_adsorbate(current, trial_sites[site_index], bond_length=co_bond_length)
+        else:
+            site_index = int(occupied_sites[int(rng.integers(len(occupied_sites)))])
+            trial = remove_co_adsorbate(current, assignments[site_index])
+
+        trial_energy = potential_energy(trial, calculator)
+        trial_n_co = len(co_carbon_indices(trial))
+        trial_grand = trial_energy - mu * trial_n_co
+        delta = trial_grand - old_grand
+        accept = delta <= 0.0 or rng.random() < math.exp(-beta * delta)
+        if accept:
+            current = trial
+            current_energy = trial_energy
+            accepted += 1
+
+        current_energy = md_runner(
+            current,
+            calculator,
+            temperature=temperature,
+            steps=md_steps,
+            timestep_fs=md_timestep_fs,
+            friction=md_friction,
+        )
+        occupied_after, _assignments_after = site_occupancy(current, trial_sites, cutoff=site_cutoff)
+        coverage = float(np.count_nonzero(occupied_after) / len(trial_sites))
+        mu += float(chemical_potential_step) * (float(target_coverage) - coverage)
+        current_n_co = len(co_carbon_indices(current))
+        current_grand = current_energy - mu * current_n_co
+        acceptance_ratio = accepted / (step + 1)
+        action_code = 1.0 if action == "adsorb" else -1.0
+        records.append(
+            (
+                float(step),
+                action_code,
+                float(accept),
+                float(current_n_co),
+                coverage,
+                current_energy,
+                current_grand,
+                mu,
+                acceptance_ratio,
+            )
+        )
+
+        if progress_every > 0 and ((step + 1) % progress_every == 0 or step == steps - 1):
+            print(
+                f"step {step + 1}/{steps}: action={action}, accepted={accepted}, "
+                f"acceptance={acceptance_ratio:.3f}, n_CO={current_n_co}, "
+                f"coverage={coverage:.3f}, mu_CO={mu:.3f} eV, energy={current_energy:.6f}",
+                flush=True,
+            )
+        if return_frames:
+            frame = current.copy()
+            frame.info.update(
+                {
+                    "mcmd_step": step,
+                    "mcmd_action": action,
+                    "mcmd_accepted": bool(accept),
+                    "mcmd_n_co": current_n_co,
+                    "mcmd_coverage": coverage,
+                    "mcmd_energy": current_energy,
+                    "mcmd_mu_co": mu,
+                    "mcmd_acceptance_ratio": acceptance_ratio,
+                }
+            )
+            frames.append(frame)
+
+    trajectory = np.array(records, dtype=float)
+    if return_frames:
+        return current, trajectory, frames
+    return current, trajectory
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Voxel-guided MC trial moves for a Wulff nanoparticle.")
+    parser = argparse.ArgumentParser(description="Voxel-guided CO adsorption/desorption MCMD on a small Wulff nanoparticle.")
     parser.add_argument("--symbol", default="Pt")
-    parser.add_argument("--natoms", type=int, default=201)
+    parser.add_argument("--natoms", type=int, default=55, help="Target nanoparticle atom count; WulffPack returns a shell-compatible count.")
     parser.add_argument("--shape", choices=("cube", "wulff"), default="cube")
     parser.add_argument("--resolution", type=float, default=0.35)
     parser.add_argument("--shell-scale", type=float, default=1.4)
     parser.add_argument("--core-scale", type=float, default=1.1)
     parser.add_argument("--min-count", type=float, default=2.5)
     parser.add_argument("--max-count", type=float, default=3.5)
-    parser.add_argument("--max-sites", type=int, default=500)
-    parser.add_argument("--steps", type=int, default=50)
+    parser.add_argument("--max-sites", type=int, default=80)
+    parser.add_argument("--steps", type=int, default=100)
     parser.add_argument(
         "--temperature",
         type=float,
-        default=900.0,
-        help="Metropolis temperature in Kelvin.",
+        default=500.0,
+        help="Metropolis and MD temperature in Kelvin.",
     )
-    parser.add_argument("--max-displacement", type=float, default=0.35)
-    parser.add_argument("--no-relax", action="store_true", help="Disable relaxation before scoring MC states.")
-    parser.add_argument("--relax-fmax", type=float, default=0.05, help="Optimizer force threshold in eV/A.")
-    parser.add_argument("--relax-steps", type=int, default=50, help="Maximum optimizer steps per MC state.")
-    parser.add_argument(
-        "--local-trial-radius",
-        type=float,
-        default=3.0,
-        help="Choose voxel trial sites within this distance of the selected atom. Use 0 for global sampling.",
-    )
+    parser.add_argument("--mu-co", type=float, default=-1.0, help="Initial CO chemical potential in eV.")
+    parser.add_argument("--target-coverage", type=float, default=0.5, help="Target fractional coverage of sampled surface sites.")
+    parser.add_argument("--mu-step", type=float, default=0.05, help="Feedback step used to adjust the CO chemical potential.")
+    parser.add_argument("--md-steps", type=int, default=50, help="MD steps run after every MC decision.")
+    parser.add_argument("--md-timestep-fs", type=float, default=1.0)
+    parser.add_argument("--md-friction", type=float, default=0.02)
+    parser.add_argument("--site-cutoff", type=float, default=1.2, help="Distance cutoff for assigning CO to sampled sites.")
+    parser.add_argument("--co-bond-length", type=float, default=1.15)
     parser.add_argument("--seed", type=int, default=11)
-    parser.add_argument("--progress-every", type=int, default=50, help="Print MC progress every N steps. Use 0 to disable.")
-    parser.add_argument("--score", choices=("emt", "orb-v3"), default="emt")
-    parser.add_argument("--device", default="cpu", help="Device passed to ORB-V3 when --score orb-v3 is used.")
+    parser.add_argument("--progress-every", type=int, default=10, help="Print MCMD progress every N steps. Use 0 to disable.")
+    parser.add_argument("--calculator", choices=("orb-v3", "emt"), default="orb-v3")
+    parser.add_argument("--device", default="cpu", help="Device passed to ORB-V3.")
+    parser.add_argument("--orb-neighbors", type=int, default=20, help="Maximum ORB neighbor count.")
     parser.add_argument("--plot", default=None, help="Optional path for a 3D plot of atoms and trial sites.")
     parser.add_argument("--state-plot", default=None, help="Optional path for an ASE final-state plot.")
     parser.add_argument(
         "--trajectory",
-        default=str(Path(__file__).with_name("orb_v3_wulff_mc.traj")),
+        default=str(Path(__file__).with_name("orb_v3_co_mcmd.traj")),
         help="ASE trajectory output path. Use an empty string to disable writing frames.",
     )
     args = parser.parse_args()
@@ -374,42 +601,50 @@ def main():
         max_sites=args.max_sites,
         seed=args.seed,
     )
-    if args.score == "orb-v3":
-        calculator = make_orb_v3_calculator(args.device)
+    if args.calculator == "orb-v3":
+        calculator = make_orb_v3_calculator(args.device, max_num_neighbors=args.orb_neighbors)
     else:
         calculator = make_emt_calculator()
-    mc_result = run_minimal_mc(
+    mcmd_result = run_co_adsorption_mcmd(
         atoms,
         trial_sites,
+        calculator,
         steps=args.steps,
         temperature=args.temperature,
-        max_displacement=args.max_displacement,
-        local_trial_radius=args.local_trial_radius,
-        relax=not args.no_relax,
-        relax_fmax=args.relax_fmax,
-        relax_steps=args.relax_steps,
+        co_chemical_potential=args.mu_co,
+        target_coverage=args.target_coverage,
+        chemical_potential_step=args.mu_step,
+        md_steps=args.md_steps,
+        md_timestep_fs=args.md_timestep_fs,
+        md_friction=args.md_friction,
+        site_cutoff=args.site_cutoff,
+        co_bond_length=args.co_bond_length,
         seed=args.seed,
-        calculator=calculator,
         return_frames=bool(args.trajectory),
         progress_every=args.progress_every,
     )
     if args.trajectory:
-        trajectory, frames = mc_result
+        atoms, trajectory, frames = mcmd_result
     else:
-        trajectory = mc_result
+        atoms, trajectory = mcmd_result
         frames = None
-    displacements = np.linalg.norm(atoms.positions - initial_positions, axis=1)
+    final_substrate = substrate_indices(atoms)
+    displacements = np.linalg.norm(atoms.positions[final_substrate] - initial_positions[: len(final_substrate)], axis=1)
 
     print(f"atoms: {len(atoms)}")
+    print(f"substrate atoms: {len(final_substrate)}")
+    print(f"CO molecules: {len(co_carbon_indices(atoms))}")
     print(f"grid points: {tuple(int(x) for x in grid.gpts)}")
     print(f"trial sites: {len(trial_sites)}")
-    print(f"accepted moves: {int(trajectory[:, 4].sum())}/{len(trajectory)}")
+    print(f"accepted moves: {int(trajectory[:, 2].sum())}/{len(trajectory)}")
     print(f"initial radial variance: {initial_radial_variance:.6f}")
     print(f"final radial variance: {radial_variance(atoms):.6f}")
-    print(f"final score: {trajectory[-1, 2]:.6f}")
-    print(f"acceptance ratio: {trajectory[-1, 3]:.3f}")
-    print(f"mean displacement: {displacements.mean():.4f} A")
-    print(f"max displacement: {displacements.max():.4f} A")
+    print(f"final coverage: {trajectory[-1, 4]:.3f}")
+    print(f"final energy: {trajectory[-1, 5]:.6f}")
+    print(f"final mu_CO: {trajectory[-1, 7]:.3f} eV")
+    print(f"acceptance ratio: {trajectory[-1, 8]:.3f}")
+    print(f"mean substrate displacement: {displacements.mean():.4f} A")
+    print(f"max substrate displacement: {displacements.max():.4f} A")
     if args.trajectory:
         print(f"trajectory: {write_mc_trajectory(frames, args.trajectory)}")
     if args.plot:

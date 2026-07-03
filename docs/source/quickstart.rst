@@ -1,14 +1,14 @@
 Quickstart Tutorial
 ===================
 
-This tutorial builds a cube-like WulffPack nanoparticle, converts it into a
-voxel coordination-surface mask, samples trial positions from that mask, and
-runs a minimal Monte Carlo loop. The default example uses ASE EMT as a small,
-local potential-energy scorer. ORB-V3 can be selected when the optional ORB
-dependencies are installed.
+This tutorial builds a small cube-like WulffPack nanoparticle, converts it into
+a voxel coordination-surface mask, samples adsorption sites from that mask, and
+runs a simple CO adsorption/desorption MCMD loop. The runnable example defaults
+to ORB-V3 on CPU with the conservative 20-neighbor model. ASE EMT is kept as a
+fast fallback for testing the mechanics of the workflow.
 
 The complete script is available at
-``examples/mc/orb_v3_wulff_mc.py``.
+``examples/mc/orb_v3_co_mcmd.py``.
 
 Install Tutorial Dependencies
 -----------------------------
@@ -41,9 +41,9 @@ particle is built from symmetry-compatible atomic shells.
    particle = SingleCrystal(surface_energies, primitive_structure=primitive, natoms=201)
    atoms = particle.atoms
 
-Using only the ``(100)`` facet creates a deliberately cube-like starting point.
-That makes the MC demonstration visible: accepted moves can reduce the
-spread in atom distances from the nanoparticle center.
+Using only the ``(100)`` facet creates a deliberately cube-like starting point
+with roughly 50 Pt atoms by default. That keeps the ORB-V3 CPU example small
+enough to run while still exposing several adsorption sites.
 
 WulffPack returns a finite cluster without a periodic simulation cell. A voxel
 grid needs an invertible cell, so the example translates the cluster into a
@@ -104,106 +104,86 @@ repeated additions.
            break
    trial_sites = np.array(trial_sites)
 
-Those positions are voxel centers in real space. They are useful as trial
-destinations or directions for Monte Carlo moves near the nanoparticle surface.
+Those positions are voxel centers in real space. In the MCMD example they are
+candidate carbon positions for CO adsorption. Occupied sites are assigned by
+the nearest adsorbed carbon within a short cutoff.
 
 .. image:: _static/quickstart_wulff_mc_sites.png
    :alt: Wulff nanoparticle atoms and voxel-sampled MC trial sites
    :width: 80%
 
-Minimal MC Loop
----------------
+Minimal MCMD Loop
+-----------------
 
-The example chooses likely surface atoms by radial distance, picks a local
-sampled voxel trial site, and moves the atom a short distance toward that site.
-Before scoring, the structure is relaxed with the selected ASE calculator. Each
-trial move is also relaxed before applying the Metropolis criterion. This makes
-the acceptance depend on relaxed local minima rather than on the raw trial
-guess. The default score is ASE EMT; ORB-V3 can be selected with
-``--score orb-v3``.
+The example uses a simple grand-canonical score for CO:
+``E - mu_CO * N_CO``. An adsorption trial adds one CO molecule with carbon at an
+empty voxel-sampled surface site and oxygen pointing away from the nanoparticle
+center. A desorption trial removes one occupied CO molecule. The trial is
+accepted with a Metropolis criterion, then a short Langevin MD segment is run
+after every decision. Rejected trials restore the previous accepted structure
+before the MD segment.
+
+After each step, the CO chemical potential is nudged toward the requested
+coverage target. The default target is 50% coverage of the sampled surface
+sites.
 
 .. code-block:: python
 
    import math
 
-   rng = np.random.default_rng(11)
-   center = atoms.positions.mean(axis=0)
-   distances = np.linalg.norm(atoms.positions - center, axis=1)
-   movable = np.flatnonzero(distances >= np.quantile(distances, 0.65))
-
-   from ase.calculators.emt import EMT
-
-   atoms.calc = EMT()
-
-   # The full example relaxes the initial and trial structures before scoring.
-   current_score = atoms.get_potential_energy()
-   beta = 1.0 / (8.617333262145e-5 * 1500.0)
-
-   atom_index = int(rng.choice(movable))
-   target = trial_sites[int(rng.integers(len(trial_sites)))]
-   old_position = atoms.positions[atom_index].copy()
-   direction = target - old_position
-   direction *= min(1.0, 0.35 / np.linalg.norm(direction))
-   atoms.positions[atom_index] = old_position + direction
-
-   trial_score = atoms.get_potential_energy()
-   delta = trial_score - current_score
+   beta = 1.0 / (8.617333262145e-5 * temperature)
+   old_score = old_energy - mu_co * old_n_co
+   trial_score = trial_energy - mu_co * trial_n_co
+   delta = trial_score - old_score
    accept = delta <= 0.0 or rng.random() < math.exp(-beta * delta)
-   if not accept:
-       atoms.positions[atom_index] = old_position
 
-In an ORB-V3 MC workflow, the voxel part stays the same. Only the scoring
-function changes: evaluate the old and trial structures with ORB-V3, then apply
-the usual Metropolis criterion to the energy difference.
+   if accept:
+       atoms = trial
+   else:
+       atoms = old_atoms
+
+   # The full example runs this after accepted and rejected MC decisions.
+   run_langevin_md(atoms, calculator, steps=50, temperature=temperature)
 
 Run The Example
 ---------------
 
-Run the EMT tutorial example with:
+Run a short ORB-V3 CPU MCMD example with:
 
 .. code-block:: bash
 
-   python examples/mc/orb_v3_wulff_mc.py --natoms 201 --resolution 0.35 \
-       --shell-scale 1.25 --core-scale 1.05 \
-       --steps 250 --score emt --temperature 1500 \
-       --relax-fmax 0.05 --relax-steps 50 \
-       --plot quickstart_wulff_mc_sites.png \
+   python examples/mc/orb_v3_co_mcmd.py --natoms 55 --steps 100 \
+       --calculator orb-v3 --device cpu --orb-neighbors 20 \
+       --temperature 500 --target-coverage 0.5 --md-steps 50 \
+       --plot docs/source/_static/quickstart_wulff_mc_sites.png \
        --state-plot docs/source/_static/quickstart_wulff_mc_initial_final.png
 
-The script prints the accepted move count, acceptance ratio, initial/final
-radial variance, and mean/max displacement from the starting structure so you
-can confirm that atoms actually moved during the run. It also writes an ASE
-trajectory by default:
+For a quick mechanics check without ORB, pass ``--calculator emt --steps 5
+--md-steps 1``. EMT is not intended to be a chemically meaningful CO/Pt model
+here; it is just useful for checking the control flow.
+
+The script prints the accepted move count, acceptance ratio, CO count, current
+coverage, current CO chemical potential, and substrate displacement. It also
+writes an ASE trajectory by default:
 
 .. code-block:: text
 
-   examples/mc/orb_v3_wulff_mc.traj
+   examples/mc/orb_v3_co_mcmd.traj
 
-The image below shows the final relaxed nanoparticle state from the MC run.
+The image below shows the final nanoparticle state from the MCMD run.
 
 .. image:: _static/quickstart_wulff_mc_initial_final.png
-   :alt: Final ASE-rendered nanoparticle state after relaxed voxel-guided MC steps
+   :alt: Final ASE-rendered nanoparticle state after voxel-guided CO MCMD
    :width: 65%
 
 Open it with ASE to inspect the MC path:
 
 .. code-block:: bash
 
-   ase gui examples/mc/orb_v3_wulff_mc.traj
+   ase gui examples/mc/orb_v3_co_mcmd.traj
 
-The first frame is the starting cube-like particle. Each following frame is the
-relaxed structure after one MC step; rejected steps repeat the previous relaxed
-coordinates but still carry updated ``Atoms.info`` metadata such as
-``mc_accepted`` and ``mc_score``. Pass ``--trajectory ""`` to skip writing frames, or
-``--trajectory path/to/file.traj`` to choose a different output path.
-
-To try the optional ORB-V3 scorer after installing ORB and its model
-dependencies:
-
-.. code-block:: bash
-
-   python examples/mc/orb_v3_wulff_mc.py --score orb-v3 --device cpu --steps 10
-
-The ORB helper is intentionally isolated in the example script. ORB package
-APIs, weights, and accelerator setup can change independently of the voxel-grid
-workflow.
+Each frame is the accepted structure after one MC decision and the following MD
+segment. Rejected MC trials do not appear as trial geometries; the restored
+accepted structure is propagated by MD and written instead. Pass
+``--trajectory ""`` to skip writing frames, or ``--trajectory path/to/file.traj``
+to choose a different output path.

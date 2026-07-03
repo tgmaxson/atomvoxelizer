@@ -6,8 +6,8 @@ import pytest
 
 
 def load_mc_example():
-    path = Path(__file__).resolve().parents[1] / "examples" / "mc" / "orb_v3_wulff_mc.py"
-    spec = importlib.util.spec_from_file_location("orb_v3_wulff_mc", path)
+    path = Path(__file__).resolve().parents[1] / "examples" / "mc" / "orb_v3_co_mcmd.py"
+    spec = importlib.util.spec_from_file_location("orb_v3_co_mcmd", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -152,3 +152,60 @@ def test_minimal_mc_can_relax_trial_states():
 
     assert trajectory.shape == (2, 5)
     assert np.isfinite(trajectory[:, 2]).all()
+
+
+def test_co_adsorption_mcmd_runs_md_after_accept_and_reject():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms(
+        "Pt4",
+        positions=np.array(
+            [
+                [5.0, 5.0, 5.0],
+                [5.0, 5.0, 7.0],
+                [5.0, 7.0, 5.0],
+                [7.0, 5.0, 5.0],
+            ]
+        ),
+        cell=np.eye(3) * 12.0,
+    )
+    trial_sites = np.array([[6.0, 6.0, 8.4], [6.0, 8.4, 6.0]])
+    md_calls = []
+
+    def md_runner(atoms, calculator, temperature, steps, timestep_fs, friction):
+        md_calls.append((len(atoms), steps))
+        return example.potential_energy(atoms, calculator)
+
+    final_atoms, trajectory = example.run_co_adsorption_mcmd(
+        atoms,
+        trial_sites,
+        calculator=example.make_emt_calculator(),
+        steps=4,
+        temperature=300.0,
+        co_chemical_potential=-100.0,
+        md_steps=50,
+        seed=3,
+        md_runner=md_runner,
+    )
+
+    assert trajectory.shape == (4, 9)
+    assert len(md_calls) == 4
+    assert all(call[1] == 50 for call in md_calls)
+    assert int(trajectory[:, 2].sum()) < len(trajectory)
+    assert len(final_atoms) >= len(atoms)
+
+
+def test_co_adsorption_helpers_count_and_remove_adsorbates():
+    ase = pytest.importorskip("ase")
+
+    example = load_mc_example()
+    atoms = ase.Atoms("Pt", positions=[[5.0, 5.0, 5.0]], cell=np.eye(3) * 12.0)
+    site = np.array([5.0, 5.0, 7.0])
+
+    adsorbed = example.add_co_adsorbate(atoms, site, bond_length=1.15)
+    assert list(adsorbed.symbols) == ["Pt", "C", "O"]
+    assert example.coverage_fraction(adsorbed, np.array([site]), cutoff=0.2) == pytest.approx(1.0)
+
+    removed = example.remove_co_adsorbate(adsorbed, example.co_carbon_indices(adsorbed)[0])
+    assert list(removed.symbols) == ["Pt"]
