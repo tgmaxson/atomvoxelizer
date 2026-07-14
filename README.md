@@ -190,3 +190,11 @@ Upload to TestPyPI first, then PyPI:
 twine upload --repository testpypi dist/*
 twine upload dist/*
 ```
+
+## Repository mirror
+
+The primary development repository is hosted on GitLab. The GitHub
+repository is maintained as a synchronized public mirror for archival,
+citation, and release purposes. Please submit merge
+requests through the GitLab repository but issues will also be monitored
+in GitHub as well.
