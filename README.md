@@ -195,6 +195,9 @@ twine upload dist/*
 
 The primary development repository is hosted on GitLab. The GitHub
 repository is maintained as a synchronized public mirror for archival,
-citation, and release purposes. Please submit merge
-requests through the GitLab repository but issues will also be monitored
-in GitHub as well.
+citation, publishing, and release purposes:
+
+https://github.com/tgmaxson/atomvoxelizer
+
+Please submit merge requests through the GitLab repository. GitHub issues
+will also be monitored, but active development happens on GitLab.

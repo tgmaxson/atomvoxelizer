@@ -308,38 +308,53 @@ def plot_rows(rows, output_path):
         "VoxelGrid Numba": "#2f9e44",
     }
     markers = {
-        "Direct atom-grid scan": "o",
-        "VoxelGrid NumPy": "s",
-        "VoxelGrid Numba": "^",
+        "zeolite": "o",
+        "nanoparticle": "s",
+        "surface": "^",
     }
     workloads = [name for name in ["zeolite", "nanoparticle", "surface"] if any(row["workload"] == name for row in rows)]
-    fig, axes = plt.subplots(1, len(workloads), figsize=(4.1 * len(workloads), 3.8), dpi=220, sharey=True)
-    if len(workloads) == 1:
-        axes = [axes]
+    fig, ax = plt.subplots(figsize=(7.2, 4.6), dpi=220)
 
-    for ax, workload in zip(axes, workloads):
-        subset = [row for row in rows if row["workload"] == workload and np.isfinite(row["best_s"])]
-        for method in ["Direct atom-grid scan", "VoxelGrid NumPy", "VoxelGrid Numba"]:
-            points = [row for row in subset if row["method"] == method]
+    for method in ["Direct atom-grid scan", "VoxelGrid NumPy", "VoxelGrid Numba"]:
+        for workload in workloads:
+            points = [
+                row
+                for row in rows
+                if row["workload"] == workload and row["method"] == method and np.isfinite(row["best_s"])
+            ]
             if not points:
                 continue
             points.sort(key=lambda row: row["atoms"])
             ax.plot(
                 [row["atoms"] for row in points],
                 [row["best_s"] for row in points],
-                marker=markers[method],
+                marker=markers[workload],
                 color=colors[method],
-                label=method,
+                label=f"{method}, {workload}",
                 linewidth=1.8,
                 markersize=4.5,
             )
-        ax.set_yscale("log")
-        ax.set_xlabel("Atoms")
-        ax.set_title(workload.capitalize())
-        ax.grid(True, axis="y", which="both", alpha=0.28)
-        ax.grid(True, axis="x", which="major", alpha=0.18)
-    axes[0].set_ylabel("Best wall time [s]")
-    axes[0].legend(fontsize=7.2, loc="best", frameon=True)
+    ax.set_yscale("log")
+    finite_times = [row["best_s"] for row in rows if np.isfinite(row["best_s"])]
+    if finite_times:
+        ax.set_ylim(min(finite_times) * 0.15, max(finite_times) * 4.0)
+    ax.set_xlabel("Atoms")
+    ax.set_ylabel("Best wall time [s]")
+    ax.grid(True, axis="y", which="both", alpha=0.28)
+    ax.grid(True, axis="x", which="major", alpha=0.18)
+
+    method_handles = [
+        plt.Line2D([0], [0], color=color, lw=2.0, label=method.replace("VoxelGrid ", ""))
+        for method, color in colors.items()
+    ]
+    system_handles = [
+        plt.Line2D([0], [0], color="#4a4a4a", marker=marker, linestyle="None", label=workload.capitalize())
+        for workload, marker in markers.items()
+        if workload in workloads
+    ]
+    first = ax.legend(handles=method_handles, fontsize=7.4, loc="upper left", frameon=True, title="Backend")
+    ax.add_artist(first)
+    ax.legend(handles=system_handles, fontsize=7.4, loc="lower right", frameon=True, title="System")
     fig.tight_layout()
     fig.savefig(output_path, dpi=220)
 

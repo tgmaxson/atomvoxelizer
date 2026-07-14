@@ -20,6 +20,8 @@ Use these links when working with the project:
      - https://gitlab.com/tgmaxson/atomvoxelizer
    * - Issues
      - https://gitlab.com/tgmaxson/atomvoxelizer/-/issues
+   * - GitHub mirror
+     - https://github.com/tgmaxson/atomvoxelizer
    * - PyPI package
      - https://pypi.org/project/AtomVoxelizer/
    * - Documentation
@@ -31,7 +33,10 @@ Reporting Issues
 ----------------
 
 Open an issue on GitLab for bugs, confusing behavior, documentation problems,
-or feature proposals. A useful issue includes:
+or feature proposals. The GitHub repository is a synchronized mirror for
+archiving, publishing, and discoverability; GitHub issues will be monitored,
+but active development and merge requests should use GitLab. A useful issue
+includes:
 
 * Operating system
 * Python version

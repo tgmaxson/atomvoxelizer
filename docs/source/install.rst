@@ -44,6 +44,18 @@ The canonical source repository is:
 
    https://gitlab.com/tgmaxson/atomvoxelizer
 
+GitHub Mirror
+-------------
+
+AtomVoxelizer is also mirrored to GitHub:
+
+   https://github.com/tgmaxson/atomvoxelizer
+
+The GitHub repository is maintained for public archiving, publishing, and
+discoverability. Active development, merge requests, and release preparation
+are handled in GitLab. GitHub issues will be monitored, but contributors should
+prefer the GitLab repository for development work.
+
 Optional Feature Map
 --------------------
 
