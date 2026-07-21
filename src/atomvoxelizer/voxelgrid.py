@@ -87,6 +87,90 @@ class VoxelGrid:
         """Return the voxel values as a NumPy array."""
         return self.grid
 
+    def voxel_centers(self, indices=None):
+        """Return real-space voxel-center positions.
+
+        Parameters
+        ----------
+        indices
+            Optional integer array with shape ``(N, 3)``. When omitted, centers
+            for every voxel are returned with shape ``(*gpts, 3)``. When
+            supplied, only those voxel centers are returned with shape
+            ``(N, 3)``.
+        """
+        if indices is None:
+            nx, ny, nz = self.gpts
+            ix, iy, iz = np.meshgrid(
+                np.arange(nx) + 0.5,
+                np.arange(ny) + 0.5,
+                np.arange(nz) + 0.5,
+                indexing="ij",
+            )
+            frac = np.stack([ix / nx, iy / ny, iz / nz], axis=-1)
+            return frac @ self.cell
+
+        indices = np.asarray(indices, dtype=np.float64)
+        if indices.ndim != 2 or indices.shape[1] != 3:
+            raise ValueError("indices must have shape (N, 3)")
+        frac = (indices + 0.5) / self.gpts
+        return frac @ self.cell
+
+    def to_point_cloud(self, min_value=None, max_value=None, threshold=None, above=True, return_indices=False):
+        """Return voxel centers and values selected from the grid.
+
+        This is useful for exporting occupied voxels, distance-mask ranges, or
+        candidate sampling locations to visualization tools.
+
+        ``threshold`` selects values above the threshold by default. Set
+        ``above=False`` to select values below the threshold. Alternatively,
+        use ``min_value`` and/or ``max_value`` to select a closed value range.
+        Complex-valued grids cannot be thresholded or range filtered.
+        """
+        if threshold is not None and (min_value is not None or max_value is not None):
+            raise ValueError("Specify either threshold or min_value/max_value, not both")
+        if threshold is not None or min_value is not None or max_value is not None:
+            self._check_ordered_grid("to_point_cloud")
+
+        grid = self.to_numpy()
+        if threshold is not None:
+            selected = grid > threshold if above else grid < threshold
+        else:
+            selected = np.ones(grid.shape, dtype=bool)
+            if min_value is not None:
+                selected &= grid >= min_value
+            if max_value is not None:
+                selected &= grid <= max_value
+
+        indices = np.argwhere(selected)
+        centers = self.voxel_centers(indices)
+        values = grid[tuple(indices[:, axis] for axis in range(3))]
+        if return_indices:
+            return centers, values, indices.astype(np.int32, copy=False)
+        return centers, values
+
+    def save_npz(self, filename, compressed=True):
+        """Save grid values and cell metadata to a NumPy ``.npz`` archive."""
+        save = np.savez_compressed if compressed else np.savez
+        save(
+            filename,
+            grid=self.to_numpy(),
+            cell=self.cell,
+            gpts=self.gpts,
+            dtype=np.array(str(self.dtype)),
+        )
+
+    @classmethod
+    def from_npz(cls, filename):
+        """Load a ``VoxelGrid`` from an archive written by :meth:`save_npz`."""
+        with np.load(filename, allow_pickle=False) as data:
+            grid_values = np.array(data["grid"], copy=True)
+            cell = np.array(data["cell"], dtype=np.float64, copy=True)
+            gpts = np.array(data["gpts"], dtype=int, copy=True)
+
+        voxel_grid = cls(cell=cell, gpts=gpts, dtype=grid_values.dtype)
+        voxel_grid.grid[...] = grid_values
+        return voxel_grid
+
     def position_to_index(self, r):
         """Convert real-space position to voxel index using periodic wrapping."""
         frac = np.asarray(r, dtype=np.float64) @ self.cell_inv

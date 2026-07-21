@@ -79,6 +79,53 @@ def test_positions_wrap_periodically():
     np.testing.assert_allclose(grid.index_to_position(0, 1, 2), np.array([0.5, 1.5, 2.5]))
 
 
+def test_voxel_centers_and_point_cloud_export():
+    grid = VoxelGridNumPy(np.diag([4.0, 6.0, 8.0]), gpts=(2, 3, 4), dtype=np.float64)
+    grid.grid[0, 0, 0] = 1.0
+    grid.grid[1, 2, 3] = 2.0
+
+    centers = grid.voxel_centers()
+    assert centers.shape == (2, 3, 4, 3)
+    np.testing.assert_allclose(centers[0, 0, 0], np.array([1.0, 1.0, 1.0]))
+    np.testing.assert_allclose(centers[1, 2, 3], np.array([3.0, 5.0, 7.0]))
+
+    selected_centers, values, indices = grid.to_point_cloud(threshold=0.5, return_indices=True)
+    np.testing.assert_array_equal(indices, np.array([[0, 0, 0], [1, 2, 3]], dtype=np.int32))
+    np.testing.assert_allclose(selected_centers, np.array([[1.0, 1.0, 1.0], [3.0, 5.0, 7.0]]))
+    np.testing.assert_allclose(values, np.array([1.0, 2.0]))
+
+    selected_centers, values = grid.to_point_cloud(min_value=1.5, max_value=2.5)
+    np.testing.assert_allclose(selected_centers, np.array([[3.0, 5.0, 7.0]]))
+    np.testing.assert_allclose(values, np.array([2.0]))
+
+
+def test_point_cloud_validates_filter_arguments_and_complex_ordering():
+    grid = VoxelGridNumPy(np.eye(3), gpts=(2, 2, 2))
+    with pytest.raises(ValueError, match="either"):
+        grid.to_point_cloud(min_value=0.0, threshold=0.5)
+
+    complex_grid = VoxelGridNumPy(np.eye(3), gpts=(2, 2, 2), dtype=np.complex64)
+    centers, values = complex_grid.to_point_cloud()
+    assert centers.shape == (8, 3)
+    assert values.dtype == np.dtype(np.complex64)
+    with pytest.raises(TypeError, match="complex"):
+        complex_grid.to_point_cloud(threshold=0.0)
+
+
+def test_save_npz_round_trip_preserves_grid_metadata_and_dtype(tmp_path):
+    grid = VoxelGridNumPy(np.diag([2.0, 3.0, 4.0]), gpts=(2, 3, 4), dtype=np.int16)
+    grid.grid[1, 2, 3] = 7
+
+    filename = tmp_path / "grid.npz"
+    grid.save_npz(filename)
+    loaded = VoxelGridNumPy.from_npz(filename)
+
+    np.testing.assert_allclose(loaded.cell, grid.cell)
+    np.testing.assert_array_equal(loaded.gpts, grid.gpts)
+    np.testing.assert_array_equal(loaded.grid, grid.grid)
+    assert loaded.grid.dtype == np.dtype(np.int16)
+
+
 def test_single_sphere_mutations_and_clamping():
     grid = VoxelGridNumPy(np.eye(3) * 5.0, gpts=(5, 5, 5))
     center = np.array([2.5, 2.5, 2.5])

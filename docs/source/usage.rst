@@ -63,6 +63,30 @@ nearest atom within a cutoff:
 Periodic scalar meshes are clipped at the primary cell boundary. This avoids
 wrapping a boundary-crossing triangle across the cell.
 
+Exporting Grid Data
+-------------------
+
+Use ``save_npz`` to preserve a voxel grid as a compact NumPy archive containing
+the grid values, cell, grid dimensions, and dtype. The matching ``from_npz``
+constructor restores a ``VoxelGrid`` for later analysis:
+
+.. code-block:: python
+
+   grid.save_npz("distance_mask.npz")
+   restored = VoxelGrid.from_npz("distance_mask.npz")
+
+For visualization or downstream sampling, ``to_point_cloud`` converts selected
+voxels to real-space voxel-center coordinates plus their stored values:
+
+.. code-block:: python
+
+   centers, values = grid.to_point_cloud(min_value=2.5, max_value=3.5)
+
+``voxel_centers`` returns the real-space center of every voxel, or only the
+centers for a supplied ``(N, 3)`` integer index array. These export helpers are
+NumPy-only and work with scalar ``VoxelGrid`` instances from the default and
+Numba backends.
+
 Coordination-Surface Masks
 --------------------------
 

@@ -80,6 +80,20 @@ surface_area = analysis.mesh_surface_area(vertices, faces)
 Periodic scalar meshes are clipped at the primary cell boundary so triangles
 that cross a periodic boundary are cut at the cell edge.
 
+Voxel grids can be saved as compact NumPy archives and restored later:
+
+```python
+grid.save_npz("distance_mask.npz")
+restored = VoxelGrid.from_npz("distance_mask.npz")
+```
+
+For visualization or downstream sampling, selected voxels can be exported as a
+real-space point cloud:
+
+```python
+centers, values = grid.to_point_cloud(min_value=2.5, max_value=3.5)
+```
+
 ## Zeolite Example
 
 The zeolite example and CIF files live in `examples/zeolite/`.
