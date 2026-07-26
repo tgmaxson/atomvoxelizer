@@ -28,15 +28,14 @@ pip install taichi
 # Choose the CuPy package matching your CUDA runtime, for example:
 pip install cupy-cuda12x
 pip install ".[analysis]"
-pip install ".[cpp]"
+ATOMVOXELIZER_BUILD_CPP=1 pip install ".[cpp]"
 ```
 
 `VoxelGrid` is always the NumPy backend. Optional acceleration backends are
 explicit: `VoxelGridNumba`, `VoxelGridCpp`, `VoxelGridTaichi`, and
 `VoxelGridCuPy`. The C++ backend is optional and only available when the
-pybind11 extension was built. Use the `cpp` extra to request the build
-dependency; installation can still fall back to the pure-Python package if a
-compiler is unavailable.
+pybind11 extension was built. Use the `cpp` extra together with
+`ATOMVOXELIZER_BUILD_CPP=1` to request the build dependency and extension.
 `VoxelGridCuPy` also includes an experimental `add_spheres_cell_colored` method
 that uses a 27-color spatial-cell schedule to avoid GPU write races without
 atomics. Mixed radii are handled by sizing the coloring cells from the largest

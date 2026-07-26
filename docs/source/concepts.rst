@@ -103,8 +103,9 @@ small one-shot masks. Use ``prepare_cell_coloring`` and
 same scalar sphere-update operations. It is useful when a compiled extension is
 preferred over a JIT dependency, or when comparing C++ and Numba CPU kernels.
 The extension is optional: normal source installs remain pure Python, and
-users request it with the ``cpp`` extra when pybind11 and a C++ compiler are
-available.
+users request it with ``ATOMVOXELIZER_BUILD_CPP=1`` and the ``cpp`` extra when
+pybind11 and a C++ compiler are available. Release builds are pure Python by
+default.
 
 ``VoxelGridNumba`` and ``VoxelGridCpp`` also expose
 ``apply_sphere_operations`` for ordered recipes. The user supplies a list of
@@ -175,7 +176,8 @@ Run the CPU mask-generation benchmark with:
 This benchmark compares a simple direct atom-grid distance scan with
 ``VoxelGrid`` NumPy, ``VoxelGridNumba``, opt-in ``VoxelGridNumba`` 27-color
 addition, and ``VoxelGridCpp`` from small models to roughly 3000 atoms for
-zeolite, nanoparticle, and surface workloads. CuPy and Taichi remain
+zeolite, nanoparticle, and surface workloads. The documented 27-color
+measurements use 24 Numba threads. CuPy and Taichi remain
 experimental backends, but they are not emphasized in the default benchmark
 because current atom-by-atom GPU updates are generally not competitive for these
 workloads.

@@ -7,6 +7,10 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+### Changed
+- Build pure-Python release wheels by default; compiling the optional C++
+  backend now requires ``ATOMVOXELIZER_BUILD_CPP=1``.
+
 ## [0.7.0] - 2026-07-26
 
 ### Changed

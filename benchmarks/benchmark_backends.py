@@ -445,7 +445,12 @@ def main():
     parser.add_argument("--csv", default=None, help="Optional CSV output path.")
     parser.add_argument("--no-direct", action="store_true", help="Skip the direct atom-grid scan baseline.")
     parser.add_argument("--no-numba", action="store_true", help="Skip the optional Numba backend.")
-    parser.add_argument("--numba-threads", type=int, default=None, help="Optional Numba thread count.")
+    parser.add_argument(
+        "--numba-threads",
+        type=int,
+        default=24,
+        help="Numba thread count for the Numba and 27-color paths (default: 24).",
+    )
     parser.add_argument(
         "--no-numba-cell-colored",
         action="store_true",

@@ -17,7 +17,7 @@ Optional feature groups can be installed with extras:
    pip install "AtomVoxelizer[analysis]"
    pip install "AtomVoxelizer[examples]"
    pip install "AtomVoxelizer[docs]"
-   pip install "AtomVoxelizer[cpp]"
+   ATOMVOXELIZER_BUILD_CPP=1 pip install "AtomVoxelizer[cpp]"
 
 The base package includes the NumPy ``VoxelGrid`` backend. Acceleration
 backends that depend on external packages are installed directly when needed:
@@ -29,10 +29,12 @@ backends that depend on external packages are installed directly when needed:
    # Choose the CuPy package matching your CUDA runtime, for example:
    pip install cupy-cuda12x
 
-``VoxelGridCpp`` is a compiled pybind11 backend and is optional. Use the
-``cpp`` extra to request the pybind11 build dependency. If the extension is not
-available for a platform or cannot be compiled, the pure-Python package remains
-usable and importing ``VoxelGridCpp`` raises an explanatory ``ImportError``.
+``VoxelGridCpp`` is a compiled pybind11 backend and is optional. Release builds
+are pure Python by default. To compile the extension from source, set
+``ATOMVOXELIZER_BUILD_CPP=1`` and request the ``cpp`` extra. If the extension
+is not available for a platform or cannot be compiled, the pure-Python package
+remains usable and importing ``VoxelGridCpp`` raises an explanatory
+``ImportError``.
 
 Install From Source
 -------------------
@@ -84,7 +86,7 @@ Optional Feature Map
      - ``pip install numba``
      - ``VoxelGridNumba``, ``FieldVoxelGridNumba``, ``VectorVoxelGridNumba``
    * - C++ backend
-     - ``pip install "AtomVoxelizer[cpp]"``
+     - ``ATOMVOXELIZER_BUILD_CPP=1 pip install "AtomVoxelizer[cpp]"``
      - ``VoxelGridCpp``
    * - CuPy backend
      - ``pip install cupy-cuda12x`` or the CuPy package matching your CUDA runtime

@@ -153,6 +153,10 @@ Build into a clean, release-specific directory and check only those artifacts:
    python -m build --outdir dist-X.Y.Z
    twine check dist-X.Y.Z/*
 
+The default build is a pure-Python wheel. Do not set
+``ATOMVOXELIZER_BUILD_CPP`` for a normal PyPI release; binary C++ wheels need a
+separate manylinux-compatible build pipeline.
+
 Upload to TestPyPI first when validating package metadata or dependency
 changes:
 
