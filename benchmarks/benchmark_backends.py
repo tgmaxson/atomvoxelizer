@@ -195,6 +195,13 @@ def warm_numba():
         pass
 
 
+def set_numba_threads(count):
+    if count is None:
+        return
+    module = importlib.import_module("numba")
+    module.set_num_threads(int(count))
+
+
 def benchmark_one(workload, methods, resolution, repeats, include_direct):
     cell = workload["cell"]
     centers = workload["centers"]
@@ -438,6 +445,7 @@ def main():
     parser.add_argument("--csv", default=None, help="Optional CSV output path.")
     parser.add_argument("--no-direct", action="store_true", help="Skip the direct atom-grid scan baseline.")
     parser.add_argument("--no-numba", action="store_true", help="Skip the optional Numba backend.")
+    parser.add_argument("--numba-threads", type=int, default=None, help="Optional Numba thread count.")
     parser.add_argument(
         "--no-numba-cell-colored",
         action="store_true",
@@ -447,6 +455,7 @@ def main():
     args = parser.parse_args()
 
     methods = ["numpy"]
+    set_numba_threads(args.numba_threads)
     if not args.no_numba:
         methods.append("numba")
         warm_numba()

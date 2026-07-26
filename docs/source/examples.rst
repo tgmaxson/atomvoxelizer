@@ -146,7 +146,7 @@ Run the mask-generation benchmark with:
 .. code-block:: bash
 
    python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
-       --plot mask_generation_scaling.png
+       --numba-threads 24 --plot mask_generation_scaling.png
 
 The benchmark scales each workload from small systems to roughly 3000 atoms and
 compares a simple direct atom-grid distance scan with ``VoxelGrid`` NumPy,

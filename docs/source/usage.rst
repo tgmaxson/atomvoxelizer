@@ -172,6 +172,6 @@ Run tests and benchmarks with:
 
    pytest
    python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
-       --plot mask_generation_scaling.png
+       --numba-threads 24 --plot mask_generation_scaling.png
    python benchmarks/benchmark_dtypes.py --backend numpy
    python benchmarks/benchmark_structures.py
