@@ -140,6 +140,37 @@ def test_cupy_backend_matches_numpy_backend_when_installed():
     np.testing.assert_allclose(cupy_grid, build_reference_grid(VoxelGridNumPy))
 
 
+def test_cupy_cell_colored_add_matches_numpy_when_installed():
+    if importlib.util.find_spec("cupy") is None:
+        pytest.skip("CuPy is not installed")
+
+    import cupy as cp
+
+    try:
+        cp.cuda.runtime.getDeviceCount()
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(f"CuPy is installed but no CUDA device is available: {exc}")
+
+    from atomvoxelizer import VoxelGridCuPy
+
+    cell = np.eye(3) * 8.0
+    centers = np.array(
+        [
+            [1.5, 1.5, 1.5],
+            [4.5, 1.5, 1.5],
+            [7.6, 7.6, 7.6],
+            [2.5, 5.5, 4.5],
+        ]
+    )
+    radii = np.array([1.01, 1.51, 1.01, 1.51])
+    numpy_grid = VoxelGridNumPy(cell, gpts=(8, 8, 8))
+    numpy_grid.add_spheres(centers, radii, value=1.0)
+
+    cupy_grid = VoxelGridCuPy(cell, gpts=(8, 8, 8))
+    cupy_grid.add_spheres_cell_colored(centers, radii, value=1.0)
+    np.testing.assert_allclose(cupy_grid.to_numpy(), numpy_grid.to_numpy())
+
+
 def test_taichi_cpu_backend_matches_numpy_backend_when_installed():
     if importlib.util.find_spec("taichi") is None:
         pytest.skip("Taichi is not installed")

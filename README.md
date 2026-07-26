@@ -37,6 +37,10 @@ explicit: `VoxelGridNumba`, `VoxelGridCpp`, `VoxelGridTaichi`, and
 pybind11 extension was built. Use the `cpp` extra to request the build
 dependency; installation can still fall back to the pure-Python package if a
 compiler is unavailable.
+`VoxelGridCuPy` also includes an experimental `add_spheres_cell_colored` method
+that uses a 27-color spatial-cell schedule to avoid GPU write races without
+atomics. Mixed radii are handled by sizing the coloring cells from the largest
+radius in the batch and grouping atoms by radius for the actual stencil update.
 
 `VoxelGridAnalysis` uses scikit-image for connected-volume and marching-cubes
 analysis when the `analysis` extra is installed. The examples extra installs
@@ -172,6 +176,7 @@ Run the mask-generation benchmark with:
 python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface --plot mask_generation_scaling.png
 python benchmarks/benchmark_dtypes.py --backend numpy
 python benchmarks/benchmark_numba_memory_order.py
+python benchmarks/benchmark_cupy_cell_coloring.py --sizes 923 2869 --resolution 0.6 --repeats 3
 ```
 
 This benchmark scales zeolite, nanoparticle, and surface systems from small

@@ -7,9 +7,17 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-26
+
 ### Added
 - Added a voxel-guided CO adsorption/desorption MCMD nanoparticle example using
   ORB-V3 CPU by default.
+- Added an experimental CuPy 27-color cell-coloring sphere-add path for
+  GPU-resident constant masks, including mixed-radius batches by coloring with
+  the largest radius and grouping updates by radius.
+- Added a focused GPU benchmark comparing CPU Numba, the existing CuPy
+  ``add.at`` path, the CuPy 27-color kernel, a prepared CuPy 27-color plan, and
+  high-level Torch prototypes on an NVIDIA GeForce RTX 4090.
 
 ### Changed
 - Renamed the previous Wulff nanoparticle MC example to

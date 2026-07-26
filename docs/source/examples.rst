@@ -152,6 +152,21 @@ The benchmark scales each workload from small systems to roughly 3000 atoms and
 compares a simple direct atom-grid distance scan with ``VoxelGrid`` NumPy and
 ``VoxelGridNumba``.
 
+The experimental CuPy cell-coloring benchmark compares the CPU Numba backend,
+the existing CuPy ``add.at`` path, the 27-color CuPy kernel, and simple
+high-level Torch prototypes for a same-radius Pt nanoparticle workload:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_cupy_cell_coloring.py --sizes 309 923 2869 \
+       --resolution 0.6 --repeats 3 \
+       --csv benchmarks/cupy_cell_coloring_rtx4090.csv \
+       --plot docs/source/_static/cupy_cell_coloring_scaling.png
+
+The documentation figure was generated on a front-partition NVIDIA GeForce RTX
+4090. The CPU Numba series was measured in the same Slurm job for a direct
+comparison against the GPU implementations.
+
 Run the dtype benchmark to compare grid storage types:
 
 .. code-block:: bash
@@ -162,3 +177,7 @@ Run the dtype benchmark to compare grid storage types:
 .. image:: _static/mask_generation_scaling.png
    :alt: AtomVoxelizer mask-generation benchmark
    :width: 90%
+
+.. image:: _static/cupy_cell_coloring_scaling.png
+   :alt: Experimental CuPy cell-coloring benchmark compared with CPU Numba
+   :width: 85%

@@ -114,6 +114,34 @@ the CuPy package matching your CUDA runtime, for example:
 
    pip install cupy-cuda12x
 
+``VoxelGridCuPy.add_spheres_cell_colored`` is an experimental constant-mask path
+for GPU-resident shell additions. It partitions atoms into spatial cells, uses a
+27-color schedule so cells of the same color cannot have overlapping stencils,
+and processes atoms within each cell sequentially to avoid write races without
+atomics. The coloring-cell width is chosen from the largest radius in the batch,
+so mixed-radius structures are supported. Internally, atoms are grouped by
+unique radius so each kernel call can reuse a compact stencil. This path is only
+implemented for ``float32`` grids. Use ``prepare_cell_coloring`` and
+``apply_prepared_cell_coloring`` when a same-radius atom layout is applied
+repeatedly.
+
+The exploratory benchmark below compares CPU Numba, the normal CuPy ``add.at``
+path, this 27-color CuPy path, and high-level Torch ``index_put`` approaches:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_cupy_cell_coloring.py --sizes 309 923 2869 \
+       --resolution 0.6 --repeats 3 \
+       --csv benchmarks/cupy_cell_coloring_rtx4090.csv \
+       --plot docs/source/_static/cupy_cell_coloring_scaling.png
+
+On an NVIDIA GeForce RTX 4090, the 2951-atom nanoparticle case at
+``89x89x89`` grid points gave ``0.00696`` s for CPU Numba,
+``1.07422`` s for the normal CuPy ``add.at`` baseline, ``0.00573`` s for
+CuPy 27-color coloring including setup, and ``0.00130`` s for the prepared
+CuPy 27-color plan. The high-level Torch implementations were near ``1`` s and
+were not promising without a custom compiled kernel.
+
 ``VoxelGridTaichi`` and ``VoxelGridTaichiGPU`` are experimental Taichi CPU/GPU
 backends. They are included for experimentation, but the current CPU Taichi
 backend is not expected to outperform NumPy or Numba for small sphere-update
