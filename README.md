@@ -219,19 +219,21 @@ Read the Docs can use `.readthedocs.yaml` directly.
 
 ## Publishing
 
-Build and check PyPI artifacts with:
+For the versioning, validation, upload, and tag sequence, see the
+[release checklist](docs/source/contributing.rst#release-checklist). The
+artifact commands are:
 
 ```bash
 pip install -e ".[publish]"
-python -m build
-twine check dist/*
+python -m build --outdir dist-X.Y.Z
+twine check dist-X.Y.Z/*
 ```
 
 Upload to TestPyPI first, then PyPI:
 
 ```bash
-twine upload --repository testpypi dist/*
-twine upload dist/*
+twine upload --repository testpypi dist-X.Y.Z/*
+twine upload dist-X.Y.Z/*
 ```
 
 ## Repository mirror

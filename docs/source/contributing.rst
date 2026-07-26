@@ -128,30 +128,50 @@ Release Checklist
 -----------------
 
 Releases are built from the GitLab repository using the standard
-``pyproject.toml`` build workflow. Before publishing a release, run the CPU
-tests and rebuild the documentation:
+``pyproject.toml`` build workflow. For a release ``X.Y.Z``, first update the
+version in both ``pyproject.toml`` and ``docs/source/conf.py``, move the
+relevant notes from ``Unreleased`` into a dated ``CHANGELOG`` section, and
+commit those changes. Create a local annotated tag for that exact commit; the
+release tag must be named ``vX.Y.Z``:
+
+.. code-block:: bash
+
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
+
+Before publishing, run the CPU tests and rebuild the documentation:
 
 .. code-block:: bash
 
    pytest
    sphinx-build -b html docs/source docs/build/html
 
-Build and check the source distribution and wheel:
+Build into a clean, release-specific directory and check only those artifacts:
 
 .. code-block:: bash
 
-   python -m build
-   twine check dist/*
+   rm -rf dist-X.Y.Z
+   python -m build --outdir dist-X.Y.Z
+   twine check dist-X.Y.Z/*
 
 Upload to TestPyPI first when validating package metadata or dependency
 changes:
 
 .. code-block:: bash
 
-   twine upload --repository testpypi dist/*
+   twine upload --repository testpypi dist-X.Y.Z/*
 
 Then upload the checked artifacts to PyPI:
 
 .. code-block:: bash
 
-   twine upload dist/*
+   twine upload dist-X.Y.Z/*
+
+After the production upload succeeds, push the release commit and its tag:
+
+.. code-block:: bash
+
+   git push origin main vX.Y.Z
+
+Finally, confirm that the PyPI project page, the ``vX.Y.Z`` GitLab release,
+and the published documentation show the expected version. Do not reuse a
+version after any artifact for it has been uploaded to PyPI.

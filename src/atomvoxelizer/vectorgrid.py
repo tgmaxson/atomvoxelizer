@@ -61,10 +61,6 @@ class FieldVoxelGrid(VoxelGrid):
             return (int(value_shape),)
         return tuple(int(dim) for dim in value_shape)
 
-    def _offset_indices(self, center_idx, offsets):
-        indices = (offsets + center_idx) % self.gpts
-        return tuple(indices[:, axis] for axis in range(3))
-
     @staticmethod
     def _validate_field_mask(mask):
         if mask not in {"constant", "normal"}:
@@ -221,17 +217,6 @@ class FieldVoxelGrid(VoxelGrid):
         normalized[nonzero] /= norms[nonzero, None]
         return normalized
 
-    def _voxel_center_positions(self):
-        nx, ny, nz = self.gpts
-        ix, iy, iz = np.meshgrid(
-            np.arange(nx),
-            np.arange(ny),
-            np.arange(nz),
-            indexing="ij",
-        )
-        frac = (np.stack([ix, iy, iz], axis=-1) + 0.5) / self.gpts
-        return frac @ self.cell
-
     def _sampled_vector_mask(self, norms, stride, min_norm):
         if stride < 1:
             raise ValueError("stride must be at least 1")
@@ -266,7 +251,7 @@ class FieldVoxelGrid(VoxelGrid):
         slicers = [slice(None)] * 3
         slicers[ax_idx] = index
         vectors = self.grid[tuple(slicers)]
-        positions = self._voxel_center_positions()[tuple(slicers)]
+        positions = self.voxel_centers()[tuple(slicers)]
 
         norms = np.linalg.norm(vectors, axis=-1)
         selected = self._sampled_vector_mask(norms, stride, min_norm)
@@ -319,7 +304,7 @@ class FieldVoxelGrid(VoxelGrid):
     def quiver_3d_data(self, stride=1, min_norm=0.0, normalize=False):
         """Return 3D quiver data for a three-component vector field."""
         self._check_vector_field("quiver_3d_data")
-        positions = self._voxel_center_positions()
+        positions = self.voxel_centers()
         vectors = self.grid
         norms = np.linalg.norm(vectors, axis=-1)
 
