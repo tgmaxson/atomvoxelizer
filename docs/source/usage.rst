@@ -125,6 +125,41 @@ is a geometric shell-overlap field for sampling surface-like positions near
 atoms. Sampling from ``2.5`` to ``3.5`` selects the coordination-3 surface while
 avoiding exact integer boundary issues.
 
+Ordered Operation Batching
+--------------------------
+
+The Numba and C++ scalar backends can apply an ordered list of sphere
+operations through ``apply_sphere_operations``. This is useful when a mask is
+defined by a recipe, such as adding all outer coordination shells and then
+carving the atomic cores back out. The recipe order is preserved, but the hot
+loop over centers and stencil offsets runs in one compiled backend call.
+
+.. code-block:: python
+
+   from atomvoxelizer import VoxelGridNumba
+
+   grid = VoxelGridNumba(cell=atoms.cell.array, resolution=0.25)
+   grid.apply_sphere_operations(
+       [
+           {
+               "operation": "add",
+               "centers": centers,
+               "radii": 1.4 * radii,
+               "value": 1.0,
+           },
+           {
+               "operation": "set",
+               "centers": centers,
+               "radii": 1.1 * radii,
+               "value": 0.0,
+           },
+       ]
+   )
+
+``VoxelGridCpp`` provides the same method when the optional pybind11 extension
+is available. ``VoxelGrid`` remains the pure NumPy reference implementation and
+does not need this batching interface for correctness.
+
 Examples
 --------
 

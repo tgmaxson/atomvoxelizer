@@ -113,3 +113,27 @@ def test_numba_backend_validates_masks_and_sphere_inputs():
         grid.add_spheres(np.array([1.0, 1.0, 1.0]), np.array([0.5]))
     with pytest.raises(ValueError, match="radii"):
         grid.add_spheres(np.array([[1.0, 1.0, 1.0]]), np.array([0.5, 0.6]))
+
+
+def test_numba_backend_applies_ordered_sphere_operation_sequence():
+    from atomvoxelizer.numba_backend import VoxelGridNumba
+
+    cell = np.eye(3) * 6.0
+    centers = np.array([[1.5, 1.5, 1.5], [4.5, 1.5, 1.5], [5.8, 5.8, 5.8]])
+    outer = np.array([1.2, 0.8, 1.2])
+    inner = np.array([0.6, 0.4, 0.6])
+
+    numba_grid = VoxelGridNumba(cell, gpts=(6, 6, 6))
+    numba_grid.apply_sphere_operations(
+        [
+            {"operation": "add", "centers": centers, "radii": outer, "value": 1.0},
+            {"operation": "set", "centers": centers, "radii": inner, "value": -1.0},
+            {"operation": "add", "centers": centers[:2], "radii": inner[:2], "value": 0.5, "mask": "distance"},
+        ]
+    )
+
+    numpy_grid = VoxelGrid(cell, gpts=(6, 6, 6))
+    numpy_grid.add_spheres(centers, outer, value=1.0)
+    numpy_grid.set_spheres(centers, inner, value=-1.0)
+    numpy_grid.add_spheres(centers[:2], inner[:2], value=0.5, mask="distance")
+    np.testing.assert_allclose(numba_grid.to_numpy(), numpy_grid.to_numpy())

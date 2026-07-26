@@ -28,10 +28,16 @@ pip install taichi
 # Choose the CuPy package matching your CUDA runtime, for example:
 pip install cupy-cuda12x
 pip install ".[analysis]"
+pip install ".[cpp]"
 ```
 
 `VoxelGrid` is always the NumPy backend. Optional acceleration backends are
-explicit: `VoxelGridNumba`, `VoxelGridTaichi`, and `VoxelGridCuPy`.
+explicit: `VoxelGridNumba`, `VoxelGridCpp`, `VoxelGridTaichi`, and
+`VoxelGridCuPy`. The C++ backend is optional and only available when the
+pybind11 extension was built. Use the `cpp` extra to request the build
+dependency; installation can still fall back to the pure-Python package if a
+compiler is unavailable.
+
 `VoxelGridAnalysis` uses scikit-image for connected-volume and marching-cubes
 analysis when the `analysis` extra is installed. The examples extra installs
 ASE for CIF loading and Wulff construction examples.
@@ -92,6 +98,16 @@ real-space point cloud:
 
 ```python
 centers, values = grid.to_point_cloud(min_value=2.5, max_value=3.5)
+```
+
+`VoxelGridNumba` and `VoxelGridCpp` also support ordered operation batching for
+compiled mask recipes:
+
+```python
+grid.apply_sphere_operations([
+    {"operation": "add", "centers": atom_positions, "radii": 1.4 * radii, "value": 1.0},
+    {"operation": "set", "centers": atom_positions, "radii": 1.1 * radii, "value": 0.0},
+])
 ```
 
 ## Zeolite Example
@@ -159,7 +175,8 @@ python benchmarks/benchmark_dtypes.py --backend numpy
 
 This benchmark scales zeolite, nanoparticle, and surface systems from small
 models to roughly 3000 atoms and compares a direct atom-grid distance scan with
-`VoxelGrid` NumPy and `VoxelGridNumba`.
+`VoxelGrid` NumPy, `VoxelGridNumba`, and `VoxelGridCpp` when the compiled
+extension is available.
 
 Run the built-in structure benchmark helper with:
 
@@ -168,8 +185,9 @@ python benchmarks/benchmark_structures.py
 ```
 
 The main benchmark compares a simple direct atom-grid distance scan with
-`VoxelGrid` NumPy and `VoxelGridNumba`. CuPy and Taichi backends are available
-experimentally, but they are not the focus of the default benchmark.
+`VoxelGrid` NumPy, `VoxelGridNumba`, and `VoxelGridCpp`. CuPy and Taichi
+backends are available experimentally, but they are not the focus of the
+default benchmark.
 
 ## Documentation
 

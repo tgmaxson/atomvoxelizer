@@ -91,6 +91,20 @@ Install Numba directly when you want this backend:
 
    pip install numba
 
+``VoxelGridCpp`` uses compiled C++ kernels exposed through pybind11 for the
+same scalar sphere-update operations. It is useful when a compiled extension is
+preferred over a JIT dependency, or when comparing C++ and Numba CPU kernels.
+The extension is optional: normal source installs remain pure Python, and
+users request it with the ``cpp`` extra when pybind11 and a C++ compiler are
+available.
+
+``VoxelGridNumba`` and ``VoxelGridCpp`` also expose
+``apply_sphere_operations`` for ordered recipes. The user supplies a list of
+batched sphere operations, such as adding one shell around every atom and then
+setting a smaller core around every atom. AtomVoxelizer packs the cached
+stencils once, then the backend applies the ordered operation sequence inside a
+compiled loop.
+
 ``VoxelGridCuPy`` stores the grid on a CUDA device with CuPy. It can be useful
 for large GPU-resident workflows, but small atom-by-atom updates may be slower
 than CPU backends because of data movement and kernel-launch overhead. Install
@@ -117,11 +131,11 @@ Run the CPU mask-generation benchmark with:
        --plot mask_generation_scaling.png
 
 This benchmark compares a simple direct atom-grid distance scan with
-``VoxelGrid`` NumPy and ``VoxelGridNumba`` from small models to roughly 3000
-atoms for zeolite, nanoparticle, and surface workloads. CuPy and Taichi remain
-experimental backends, but they are not emphasized in the default benchmark
-because current atom-by-atom GPU updates are generally not competitive for
-these workloads.
+``VoxelGrid`` NumPy, ``VoxelGridNumba``, and ``VoxelGridCpp`` from small models
+to roughly 3000 atoms for zeolite, nanoparticle, and surface workloads. CuPy and
+Taichi remain experimental backends, but they are not emphasized in the default
+benchmark because current atom-by-atom GPU updates are generally not
+competitive for these workloads.
 
 Field Voxel Grids
 -----------------

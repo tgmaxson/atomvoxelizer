@@ -7,6 +7,7 @@ from .analysis import ProbeAccessibleResult, VoxelGridAnalysis, VoxelRegion
 __all__ = [
     "VoxelGrid",
     "VoxelGridAnalysis",
+    "VoxelGridCpp",
     "VoxelGridCuPy",
     "VoxelGridNumPy",
     "VoxelGridNumba",
@@ -37,6 +38,10 @@ def __getattr__(name):
         from .cupy_backend import VoxelGridCuPy
 
         return VoxelGridCuPy
+    if name == "VoxelGridCpp":
+        from .cpp_backend import VoxelGridCpp
+
+        return VoxelGridCpp
     if name == "VoxelGridNumba":
         from .numba_backend import VoxelGridNumba
 

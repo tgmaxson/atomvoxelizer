@@ -263,6 +263,64 @@ def _min_many_sphere_distance_offsets_flat(grid, center_indices, offsets, distan
                 grid[flat] = value
 
 
+@njit
+def _apply_operation_sequence_flat(
+    grid,
+    center_indices,
+    center_operation_ids,
+    group_ids,
+    offsets,
+    distances,
+    uses_distances,
+    starts,
+    counts,
+    operation_codes,
+    scales,
+    nx,
+    ny,
+    nz,
+):
+    for c in range(center_indices.shape[0]):
+        operation_id = center_operation_ids[c]
+        operation = operation_codes[operation_id]
+        scale = scales[operation_id]
+        group = group_ids[c]
+        start = starts[group]
+        stop = start + counts[group]
+        use_distances = uses_distances[group] != 0
+
+        cx = center_indices[c, 0]
+        cy = center_indices[c, 1]
+        cz = center_indices[c, 2]
+        for n in range(start, stop):
+            x = (cx + offsets[n, 0]) % nx
+            y = (cy + offsets[n, 1]) % ny
+            z = (cz + offsets[n, 2]) % nz
+            flat = (x * ny + y) * nz + z
+            value = distances[n] * scale if use_distances else scale
+
+            if operation == 0:
+                grid[flat] = value
+            elif operation == 1:
+                grid[flat] += value
+            elif operation == 2:
+                grid[flat] *= value
+            elif operation == 3:
+                grid[flat] /= value
+            elif operation == 4:
+                if value < grid[flat]:
+                    grid[flat] = value
+
+
+_OPERATION_CODES = {
+    "set": 0,
+    "add": 1,
+    "mul": 2,
+    "div": 3,
+    "min": 4,
+}
+
+
 class VoxelGridNumba(VoxelGrid):
     """Voxel grid with Numba-compiled mutation kernels."""
 
@@ -394,6 +452,99 @@ class VoxelGridNumba(VoxelGrid):
                 _min_many_sphere_offsets_flat(grid, subset, offsets, value, nx, ny, nz)
             else:
                 _min_many_sphere_distance_offsets_flat(grid, subset, offsets, distances, value, nx, ny, nz)
+
+    def apply_sphere_operations(self, operations):
+        """Apply an ordered sequence of batched sphere operations in one Numba call."""
+        self._check_ordered_grid("apply_sphere_operations")
+        packed = self._pack_sphere_operations(operations)
+        if packed is None:
+            return
+
+        grid, nx, ny, nz = self._flat_grid_and_shape()
+        _apply_operation_sequence_flat(grid, *packed, nx, ny, nz)
+
+    def _pack_sphere_operations(self, operations):
+        if operations is None:
+            raise ValueError("operations must be an iterable of operation mappings")
+
+        center_parts = []
+        center_operation_parts = []
+        center_group_parts = []
+        operation_codes = []
+        scales = []
+        offset_parts = []
+        distance_parts = []
+        uses_distances = []
+        starts = []
+        counts = []
+        group_lookup = {}
+        offset_start = 0
+
+        for spec in operations:
+            if not isinstance(spec, dict):
+                raise TypeError("each operation must be a mapping")
+            operation = spec.get("operation")
+            if operation not in _OPERATION_CODES:
+                raise ValueError("operation must be one of 'set', 'add', 'mul', 'div', or 'min'")
+            mask = spec.get("mask", "distance" if operation == "min" else "constant")
+            self._validate_mask(mask)
+
+            centers, radii = self._validate_spheres(spec.get("centers"), spec.get("radii"))
+            if centers.shape[0] == 0:
+                continue
+
+            operation_index = len(operation_codes)
+            scale = self._operation_scale(spec, operation)
+            center_indices = self.positions_to_indices(centers)
+            group_ids = np.empty(centers.shape[0], dtype=np.int32)
+
+            for radius in np.unique(radii):
+                key = (mask, float(radius))
+                group_id = group_lookup.get(key)
+                if group_id is None:
+                    offsets, distances = self._grouped_offsets(radius, mask)
+                    group_id = len(starts)
+                    group_lookup[key] = group_id
+                    offset_parts.append(np.ascontiguousarray(offsets, dtype=np.int32))
+                    if distances is None:
+                        distance_parts.append(np.zeros(offsets.shape[0], dtype=np.float32))
+                        uses_distances.append(0)
+                    else:
+                        distance_parts.append(np.ascontiguousarray(distances, dtype=np.float32))
+                        uses_distances.append(1)
+                    starts.append(offset_start)
+                    counts.append(offsets.shape[0])
+                    offset_start += offsets.shape[0]
+
+                group_ids[radii == radius] = group_id
+
+            center_parts.append(np.ascontiguousarray(center_indices, dtype=np.int32))
+            center_operation_parts.append(np.full(centers.shape[0], operation_index, dtype=np.int32))
+            center_group_parts.append(group_ids)
+            operation_codes.append(_OPERATION_CODES[operation])
+            scales.append(scale)
+
+        if not center_parts:
+            return None
+
+        return (
+            np.ascontiguousarray(np.vstack(center_parts), dtype=np.int32),
+            np.ascontiguousarray(np.concatenate(center_operation_parts), dtype=np.int32),
+            np.ascontiguousarray(np.concatenate(center_group_parts), dtype=np.int32),
+            np.ascontiguousarray(np.vstack(offset_parts), dtype=np.int32),
+            np.ascontiguousarray(np.concatenate(distance_parts), dtype=np.float32),
+            np.ascontiguousarray(uses_distances, dtype=np.uint8),
+            np.ascontiguousarray(starts, dtype=np.int64),
+            np.ascontiguousarray(counts, dtype=np.int64),
+            np.ascontiguousarray(operation_codes, dtype=np.int32),
+            np.ascontiguousarray(scales, dtype=np.float64),
+        )
+
+    @staticmethod
+    def _operation_scale(spec, operation):
+        if operation in {"mul", "div"}:
+            return float(spec.get("factor", spec.get("value", 2.0)))
+        return float(spec.get("value", 1.0))
 
     def clamp_grid(self, min_val=0.0, max_val=1.0):
         self._check_ordered_grid("clamp_grid")

@@ -159,6 +159,13 @@ def make_numba_mask(cell, resolution, centers, radii):
     return grid.to_numpy(), grid.gpts
 
 
+def make_cpp_mask(cell, resolution, centers, radii):
+    module = importlib.import_module("atomvoxelizer.cpp_backend")
+    grid = module.VoxelGridCpp(cell=cell, resolution=resolution, dtype=np.float32)
+    grid.set_spheres(centers, radii, value=1.0)
+    return grid.to_numpy(), grid.gpts
+
+
 def time_call(func, repeats):
     times = []
     value = None
@@ -210,6 +217,24 @@ def benchmark_one(workload, methods, resolution, repeats, include_direct):
             )
         except Exception as exc:
             rows.append(missing_row(workload, "VoxelGrid Numba", gpts, str(exc)))
+
+    if "cpp" in methods:
+        try:
+            cpp_times, (cpp_values, cpp_gpts) = time_call(
+                lambda: make_cpp_mask(cell, resolution, centers, radii),
+                repeats=repeats,
+            )
+            rows.append(
+                row_from_timing(
+                    workload,
+                    "VoxelGrid C++",
+                    cpp_times,
+                    cpp_gpts,
+                    cpp_values,
+                )
+            )
+        except Exception as exc:
+            rows.append(missing_row(workload, "VoxelGrid C++", gpts, str(exc)))
 
     if include_direct:
         direct_times, direct_values = time_call(
@@ -306,6 +331,7 @@ def plot_rows(rows, output_path):
         "Direct atom-grid scan": "#b23a48",
         "VoxelGrid NumPy": "#2a6fbb",
         "VoxelGrid Numba": "#2f9e44",
+        "VoxelGrid C++": "#7c4dff",
     }
     markers = {
         "zeolite": "o",
@@ -315,7 +341,7 @@ def plot_rows(rows, output_path):
     workloads = [name for name in ["zeolite", "nanoparticle", "surface"] if any(row["workload"] == name for row in rows)]
     fig, ax = plt.subplots(figsize=(7.2, 4.6), dpi=220)
 
-    for method in ["Direct atom-grid scan", "VoxelGrid NumPy", "VoxelGrid Numba"]:
+    for method in ["Direct atom-grid scan", "VoxelGrid NumPy", "VoxelGrid Numba", "VoxelGrid C++"]:
         for workload in workloads:
             points = [
                 row
@@ -361,7 +387,7 @@ def plot_rows(rows, output_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Benchmark direct atom-grid mask generation against AtomVoxelizer NumPy and Numba."
+        description="Benchmark direct atom-grid mask generation against AtomVoxelizer CPU backends."
     )
     parser.add_argument(
         "--workloads",
@@ -378,12 +404,15 @@ def main():
     parser.add_argument("--csv", default=None, help="Optional CSV output path.")
     parser.add_argument("--no-direct", action="store_true", help="Skip the direct atom-grid scan baseline.")
     parser.add_argument("--no-numba", action="store_true", help="Skip the optional Numba backend.")
+    parser.add_argument("--no-cpp", action="store_true", help="Skip the optional C++ backend.")
     args = parser.parse_args()
 
     methods = ["numpy"]
     if not args.no_numba:
         methods.append("numba")
         warm_numba()
+    if not args.no_cpp:
+        methods.append("cpp")
 
     workloads = make_workloads(args.workloads, args.framework, args.radius_scale, args.padding)
     rows = []

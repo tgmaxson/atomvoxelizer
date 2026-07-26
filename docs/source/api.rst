@@ -50,6 +50,11 @@ documentation/build environment.
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: atomvoxelizer.VoxelGridCpp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: atomvoxelizer.VoxelGridCuPy
    :members:
    :undoc-members:
