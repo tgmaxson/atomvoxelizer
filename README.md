@@ -171,6 +171,7 @@ Run the mask-generation benchmark with:
 ```bash
 python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface --plot mask_generation_scaling.png
 python benchmarks/benchmark_dtypes.py --backend numpy
+python benchmarks/benchmark_numba_memory_order.py
 ```
 
 This benchmark scales zeolite, nanoparticle, and surface systems from small

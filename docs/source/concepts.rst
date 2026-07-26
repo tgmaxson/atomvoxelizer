@@ -129,6 +129,7 @@ Run the CPU mask-generation benchmark with:
 
    python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
        --plot mask_generation_scaling.png
+   python benchmarks/benchmark_numba_memory_order.py
 
 This benchmark compares a simple direct atom-grid distance scan with
 ``VoxelGrid`` NumPy, ``VoxelGridNumba``, and ``VoxelGridCpp`` from small models
@@ -136,6 +137,16 @@ to roughly 3000 atoms for zeolite, nanoparticle, and surface workloads. CuPy and
 Taichi remain experimental backends, but they are not emphasized in the default
 benchmark because current atom-by-atom GPU updates are generally not
 competitive for these workloads.
+
+The memory-order benchmark records an implementation detail checked during
+``0.5.x`` development. On an AMD EPYC 7551P CPU with Python 3.12.12, NumPy
+2.4.1, and Numba 0.64.0, the current C-order flat indexing remained a good
+default. For a 2951-atom nanoparticle at ``--resolution 0.45``,
+``c-flat`` took ``0.02055`` s best, sorted C-order offsets took ``0.01979`` s,
+direct 3D indexing took ``0.01944`` s, and Fortran-style flat indexing took
+``0.02193`` s. The C-order variants were close enough that the ranking moved
+slightly between repeat runs, while Fortran-style flat indexing was consistently
+slower. The backend was not changed without broader end-to-end evidence.
 
 Field Voxel Grids
 -----------------
