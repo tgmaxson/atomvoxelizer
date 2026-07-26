@@ -159,6 +159,14 @@ def make_numba_mask(cell, resolution, centers, radii):
     return grid.to_numpy(), grid.gpts
 
 
+def make_numba_cell_colored_mask(cell, resolution, centers, radii):
+    module = importlib.import_module("atomvoxelizer.numba_backend")
+    grid = module.VoxelGridNumba(cell=cell, resolution=resolution, dtype=np.float32)
+    grid.add_spheres_cell_colored(centers, radii, value=1.0)
+    grid.clamp_grid(0.0, 1.0)
+    return grid.to_numpy(), grid.gpts
+
+
 def make_cpp_mask(cell, resolution, centers, radii):
     module = importlib.import_module("atomvoxelizer.cpp_backend")
     grid = module.VoxelGridCpp(cell=cell, resolution=resolution, dtype=np.float32)
@@ -182,6 +190,7 @@ def warm_numba():
         centers = np.array([[4.0, 4.0, 4.0]], dtype=float)
         radii = np.array([1.0], dtype=float)
         make_numba_mask(cell, 1.0, centers, radii)
+        make_numba_cell_colored_mask(cell, 1.0, centers, radii)
     except Exception:
         pass
 
@@ -217,6 +226,24 @@ def benchmark_one(workload, methods, resolution, repeats, include_direct):
             )
         except Exception as exc:
             rows.append(missing_row(workload, "VoxelGrid Numba", gpts, str(exc)))
+
+    if "numba-cell-colored" in methods:
+        try:
+            colored_times, (colored_values, colored_gpts) = time_call(
+                lambda: make_numba_cell_colored_mask(cell, resolution, centers, radii),
+                repeats=repeats,
+            )
+            rows.append(
+                row_from_timing(
+                    workload,
+                    "VoxelGrid Numba 27-color",
+                    colored_times,
+                    colored_gpts,
+                    colored_values,
+                )
+            )
+        except Exception as exc:
+            rows.append(missing_row(workload, "VoxelGrid Numba 27-color", gpts, str(exc)))
 
     if "cpp" in methods:
         try:
@@ -331,6 +358,7 @@ def plot_rows(rows, output_path):
         "Direct atom-grid scan": "#b23a48",
         "VoxelGrid NumPy": "#2a6fbb",
         "VoxelGrid Numba": "#2f9e44",
+        "VoxelGrid Numba 27-color": "#d97706",
         "VoxelGrid C++": "#7c4dff",
     }
     markers = {
@@ -341,7 +369,13 @@ def plot_rows(rows, output_path):
     workloads = [name for name in ["zeolite", "nanoparticle", "surface"] if any(row["workload"] == name for row in rows)]
     fig, ax = plt.subplots(figsize=(7.2, 4.6), dpi=220)
 
-    for method in ["Direct atom-grid scan", "VoxelGrid NumPy", "VoxelGrid Numba", "VoxelGrid C++"]:
+    for method in [
+        "Direct atom-grid scan",
+        "VoxelGrid NumPy",
+        "VoxelGrid Numba",
+        "VoxelGrid Numba 27-color",
+        "VoxelGrid C++",
+    ]:
         for workload in workloads:
             points = [
                 row
@@ -404,12 +438,20 @@ def main():
     parser.add_argument("--csv", default=None, help="Optional CSV output path.")
     parser.add_argument("--no-direct", action="store_true", help="Skip the direct atom-grid scan baseline.")
     parser.add_argument("--no-numba", action="store_true", help="Skip the optional Numba backend.")
+    parser.add_argument(
+        "--no-numba-cell-colored",
+        action="store_true",
+        help="Skip the opt-in Numba 27-color cell-colored add path.",
+    )
     parser.add_argument("--no-cpp", action="store_true", help="Skip the optional C++ backend.")
     args = parser.parse_args()
 
     methods = ["numpy"]
     if not args.no_numba:
         methods.append("numba")
+        warm_numba()
+    if not args.no_numba_cell_colored:
+        methods.append("numba-cell-colored")
         warm_numba()
     if not args.no_cpp:
         methods.append("cpp")

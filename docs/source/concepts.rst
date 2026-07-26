@@ -91,6 +91,14 @@ Install Numba directly when you want this backend:
 
    pip install numba
 
+``VoxelGridNumba.add_spheres_cell_colored`` is an opt-in parallel CPU path for
+constant-mask addition. Like the CuPy version, it builds a 27-color spatial-cell
+schedule from the largest radius in the batch and groups mixed-radius atoms by
+their actual stencil radius. The default ``add_spheres`` method is unchanged:
+cell coloring requires a plan, and that setup cost is not worthwhile for many
+small one-shot masks. Use ``prepare_cell_coloring`` and
+``apply_prepared_cell_coloring`` when the same atom layout will be reused.
+
 ``VoxelGridCpp`` uses compiled C++ kernels exposed through pybind11 for the
 same scalar sphere-update operations. It is useful when a compiled extension is
 preferred over a JIT dependency, or when comparing C++ and Numba CPU kernels.
@@ -158,13 +166,29 @@ Run the CPU mask-generation benchmark with:
    python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
        --plot mask_generation_scaling.png
    python benchmarks/benchmark_numba_memory_order.py
+   python benchmarks/benchmark_numba_cell_coloring.py --thread-scaling \
+       --thread-counts 1 2 4 8 16 24 32 \
+       --resolution 0.45 --repeats 3 \
+       --csv benchmarks/numba_cell_coloring_threads.csv \
+       --plot docs/source/_static/numba_cell_coloring_threads.png
 
 This benchmark compares a simple direct atom-grid distance scan with
-``VoxelGrid`` NumPy, ``VoxelGridNumba``, and ``VoxelGridCpp`` from small models
-to roughly 3000 atoms for zeolite, nanoparticle, and surface workloads. CuPy and
-Taichi remain experimental backends, but they are not emphasized in the default
-benchmark because current atom-by-atom GPU updates are generally not
-competitive for these workloads.
+``VoxelGrid`` NumPy, ``VoxelGridNumba``, opt-in ``VoxelGridNumba`` 27-color
+addition, and ``VoxelGridCpp`` from small models to roughly 3000 atoms for
+zeolite, nanoparticle, and surface workloads. CuPy and Taichi remain
+experimental backends, but they are not emphasized in the default benchmark
+because current atom-by-atom GPU updates are generally not competitive for these
+workloads.
+
+The Numba cell-coloring thread sweep used an AMD EPYC 7551P 32-core CPU with
+Python 3.12.12, NumPy 2.4.1, and Numba 0.64.0. For a 2951-atom Pt nanoparticle
+at ``0.45`` Angstrom resolution, the prepared cell-colored update improved from
+``0.02110`` s at one thread to ``0.00591`` s at 24 threads, then regressed to
+``0.02675`` s at 32 threads. Including plan construction, the best time was
+``0.00770`` s at 24 threads. The plan-only cost was about ``0.002`` s and did
+not scale strongly with thread count, so JITing the planner is not currently the
+obvious bottleneck. The result supports keeping this path explicit rather than
+making it the default.
 
 The memory-order benchmark records an implementation detail checked during
 ``0.5.x`` development. On an AMD EPYC 7551P CPU with Python 3.12.12, NumPy

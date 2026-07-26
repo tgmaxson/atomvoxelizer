@@ -41,6 +41,10 @@ compiler is unavailable.
 that uses a 27-color spatial-cell schedule to avoid GPU write races without
 atomics. Mixed radii are handled by sizing the coloring cells from the largest
 radius in the batch and grouping atoms by radius for the actual stencil update.
+`VoxelGridNumba` provides the same opt-in `add_spheres_cell_colored` and
+prepared-plan interface for CPU parallel experiments. The normal `add_spheres`
+path remains the default because the colored path has planning overhead and is
+not always faster.
 
 `VoxelGridAnalysis` uses scikit-image for connected-volume and marching-cubes
 analysis when the `analysis` extra is installed. The examples extra installs
@@ -176,6 +180,7 @@ Run the mask-generation benchmark with:
 python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface --plot mask_generation_scaling.png
 python benchmarks/benchmark_dtypes.py --backend numpy
 python benchmarks/benchmark_numba_memory_order.py
+python benchmarks/benchmark_numba_cell_coloring.py --thread-scaling --thread-counts 1 2 4 8 16 24 32
 python benchmarks/benchmark_cupy_cell_coloring.py --sizes 923 2869 --resolution 0.6 --repeats 3
 ```
 

@@ -149,8 +149,25 @@ Run the mask-generation benchmark with:
        --plot mask_generation_scaling.png
 
 The benchmark scales each workload from small systems to roughly 3000 atoms and
-compares a simple direct atom-grid distance scan with ``VoxelGrid`` NumPy and
-``VoxelGridNumba``.
+compares a simple direct atom-grid distance scan with ``VoxelGrid`` NumPy,
+``VoxelGridNumba``, opt-in ``VoxelGridNumba`` 27-color addition, and
+``VoxelGridCpp``.
+
+The CPU cell-coloring thread sweep checks whether the planned 27-color Numba
+path benefits from CPU parallelism:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_numba_cell_coloring.py --thread-scaling \
+       --thread-counts 1 2 4 8 16 24 32 \
+       --resolution 0.45 --repeats 3 \
+       --csv benchmarks/numba_cell_coloring_threads.csv \
+       --plot docs/source/_static/numba_cell_coloring_threads.png
+
+The documentation thread-scaling figure was generated on an AMD EPYC 7551P
+32-core CPU. It shows that the prepared colored update can benefit from
+parallelism for a larger Pt nanoparticle, but the plan-building overhead and
+32-thread regression mean this remains an explicit opt-in path.
 
 The experimental CuPy cell-coloring benchmark compares the CPU Numba backend,
 the existing CuPy ``add.at`` path, the 27-color CuPy kernel, and simple
@@ -177,6 +194,10 @@ Run the dtype benchmark to compare grid storage types:
 .. image:: _static/mask_generation_scaling.png
    :alt: AtomVoxelizer mask-generation benchmark
    :width: 90%
+
+.. image:: _static/numba_cell_coloring_threads.png
+   :alt: Numba 27-color cell-coloring thread scaling benchmark
+   :width: 85%
 
 .. image:: _static/cupy_cell_coloring_scaling.png
    :alt: Experimental CuPy cell-coloring benchmark compared with CPU Numba

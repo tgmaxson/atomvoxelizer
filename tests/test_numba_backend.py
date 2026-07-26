@@ -137,3 +137,50 @@ def test_numba_backend_applies_ordered_sphere_operation_sequence():
     numpy_grid.set_spheres(centers, inner, value=-1.0)
     numpy_grid.add_spheres(centers[:2], inner[:2], value=0.5, mask="distance")
     np.testing.assert_allclose(numba_grid.to_numpy(), numpy_grid.to_numpy())
+
+
+def test_numba_cell_colored_add_matches_default_numba_for_mixed_radii():
+    from atomvoxelizer.numba_backend import VoxelGridNumba
+
+    cell = np.eye(3) * 8.0
+    centers = np.array(
+        [
+            [1.5, 1.5, 1.5],
+            [4.5, 1.5, 1.5],
+            [7.6, 7.6, 7.6],
+            [2.5, 5.5, 4.5],
+            [5.5, 5.5, 4.5],
+        ]
+    )
+    radii = np.array([1.01, 1.51, 1.01, 1.51, 0.75])
+
+    default_grid = VoxelGridNumba(cell, gpts=(8, 8, 8), dtype=np.float32)
+    default_grid.add_spheres(centers, radii, value=1.0)
+
+    colored_grid = VoxelGridNumba(cell, gpts=(8, 8, 8), dtype=np.float32)
+    colored_grid.add_spheres_cell_colored(centers, radii, value=1.0)
+
+    np.testing.assert_allclose(colored_grid.to_numpy(), default_grid.to_numpy())
+
+
+def test_numba_prepared_cell_coloring_matches_default_numba():
+    from atomvoxelizer.numba_backend import VoxelGridNumba
+
+    cell = np.eye(3) * 8.0
+    centers = np.array(
+        [
+            [1.5, 1.5, 1.5],
+            [4.5, 1.5, 1.5],
+            [7.6, 7.6, 7.6],
+        ]
+    )
+    radii = np.full(len(centers), 1.01)
+
+    default_grid = VoxelGridNumba(cell, gpts=(8, 8, 8), dtype=np.float32)
+    default_grid.add_spheres(centers, radii, value=2.0)
+
+    colored_grid = VoxelGridNumba(cell, gpts=(8, 8, 8), dtype=np.float32)
+    plan = colored_grid.prepare_cell_coloring(centers, radius=float(radii[0]))
+    colored_grid.apply_prepared_cell_coloring(plan, value=2.0)
+
+    np.testing.assert_allclose(colored_grid.to_numpy(), default_grid.to_numpy())

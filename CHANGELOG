@@ -7,6 +7,21 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-07-26
+
+### Added
+- Added an opt-in ``VoxelGridNumba.add_spheres_cell_colored`` path for
+  constant-mask sphere addition using a 27-color spatial-cell schedule and
+  Numba CPU parallelism.
+- Added Numba cell-coloring prepared-plan helpers and tests covering mixed
+  radii and prepared updates.
+- Added a Numba cell-coloring benchmark with system-scaling and thread-scaling
+  modes, plus documentation figures for the main examples benchmark.
+
+### Changed
+- Updated the main mask-generation benchmark figure to include the opt-in Numba
+  27-color path while keeping the GPU benchmark separate.
+
 ## [0.6.0] - 2026-07-26
 
 ### Added
