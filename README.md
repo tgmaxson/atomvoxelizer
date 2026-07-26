@@ -180,7 +180,7 @@ Run the mask-generation benchmark with:
 python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface --plot mask_generation_scaling.png
 python benchmarks/benchmark_dtypes.py --backend numpy
 python benchmarks/benchmark_numba_memory_order.py
-python benchmarks/benchmark_numba_cell_coloring.py --thread-scaling --thread-counts 1 2 4 8 16 24 32
+python benchmarks/benchmark_numba_cell_coloring.py --thread-scaling --thread-counts 1 2 4 8 16 24 28
 python benchmarks/benchmark_cupy_cell_coloring.py --sizes 923 2869 --resolution 0.6 --repeats 3
 ```
 

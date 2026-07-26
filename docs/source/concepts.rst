@@ -167,7 +167,7 @@ Run the CPU mask-generation benchmark with:
        --plot mask_generation_scaling.png
    python benchmarks/benchmark_numba_memory_order.py
    python benchmarks/benchmark_numba_cell_coloring.py --thread-scaling \
-       --thread-counts 1 2 4 8 16 24 32 \
+       --thread-counts 1 2 4 8 16 24 28 \
        --resolution 0.45 --repeats 3 \
        --csv benchmarks/numba_cell_coloring_threads.csv \
        --plot docs/source/_static/numba_cell_coloring_threads.png
@@ -183,12 +183,12 @@ workloads.
 The Numba cell-coloring thread sweep used an AMD EPYC 7551P 32-core CPU with
 Python 3.12.12, NumPy 2.4.1, and Numba 0.64.0. For a 2951-atom Pt nanoparticle
 at ``0.45`` Angstrom resolution, the prepared cell-colored update improved from
-``0.02110`` s at one thread to ``0.00591`` s at 24 threads, then regressed to
-``0.02675`` s at 32 threads. Including plan construction, the best time was
-``0.00770`` s at 24 threads. The plan-only cost was about ``0.002`` s and did
-not scale strongly with thread count, so JITing the planner is not currently the
-obvious bottleneck. The result supports keeping this path explicit rather than
-making it the default.
+``0.02057`` s at one thread to ``0.00581`` s at 24 threads. A 28-thread run was
+slower at ``0.01089`` s, which is plausible on a shared front-end node. Including
+plan construction, the best time was ``0.00771`` s at 24 threads. The plan-only
+cost was about ``0.002`` s and did not scale strongly with thread count, so
+JITing the planner is not currently the obvious bottleneck. The result supports
+keeping this path explicit rather than making it the default.
 
 The memory-order benchmark records an implementation detail checked during
 ``0.5.x`` development. On an AMD EPYC 7551P CPU with Python 3.12.12, NumPy

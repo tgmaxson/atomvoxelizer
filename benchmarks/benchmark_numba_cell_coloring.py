@@ -376,7 +376,7 @@ def main():
         action="store_true",
         help="Benchmark one workload while sweeping Numba thread counts.",
     )
-    parser.add_argument("--thread-counts", nargs="+", type=int, default=[1, 2, 4, 8, 16, 24, 32])
+    parser.add_argument("--thread-counts", nargs="+", type=int, default=[1, 2, 4, 8, 16, 24, 28])
     parser.add_argument(
         "--thread-workload",
         choices=["zeolite", "nanoparticle", "surface"],

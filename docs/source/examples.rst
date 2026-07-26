@@ -159,7 +159,7 @@ path benefits from CPU parallelism:
 .. code-block:: bash
 
    python benchmarks/benchmark_numba_cell_coloring.py --thread-scaling \
-       --thread-counts 1 2 4 8 16 24 32 \
+       --thread-counts 1 2 4 8 16 24 28 \
        --resolution 0.45 --repeats 3 \
        --csv benchmarks/numba_cell_coloring_threads.csv \
        --plot docs/source/_static/numba_cell_coloring_threads.png
@@ -167,7 +167,7 @@ path benefits from CPU parallelism:
 The documentation thread-scaling figure was generated on an AMD EPYC 7551P
 32-core CPU. It shows that the prepared colored update can benefit from
 parallelism for a larger Pt nanoparticle, but the plan-building overhead and
-32-thread regression mean this remains an explicit opt-in path.
+shared-node thread-count sensitivity mean this remains an explicit opt-in path.
 
 The experimental CuPy cell-coloring benchmark compares the CPU Numba backend,
 the existing CuPy ``add.at`` path, the 27-color CuPy kernel, and simple
