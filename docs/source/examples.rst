@@ -79,8 +79,8 @@ radius. ``probe_accessible_surface_area`` estimates sampled accessible surface
 area from inflated atom surfaces.
 
 See :doc:`analysis` for the method and a five-framework comparison against
-PoreBlazer, including the matched AtomVoxelizer setup and agreement for
-probe-accessible volume and surface area.
+PoreBlazer, including the matched AtomVoxelizer setup, agreement for
+probe-accessible volume and surface area, and per-framework timing results.
 
 Finite Wulff Distance Surface
 -----------------------------

@@ -161,6 +161,13 @@ and the UiO-66 and MOF-5 structures are from COD entries
 `4132633 <https://www.crystallography.net/4132633.html>`_ and
 `1516305 <https://www.crystallography.net/1516305.html>`_, respectively.
 
+The BEA reference is specifically ``examples/zeolite/BEA.cif`` (``data_BEA``),
+the idealized pure-SiO2 IZA-SC structure whose coordinates and cell parameters
+were optimized with DLS76. It uses space group ``P 41 2 2``, a tetragonal cell
+with ``a = b = 12.632 A`` and ``c = 26.186 A``, and 192 framework atoms. This
+is a pure-silica framework model, not a composition-specific aluminosilicate
+BEA sample.
+
 Each run uses the same PoreBlazer-style nitrogen settings. AtomVoxelizer was
 supplied only numerical arrays: cell, atomic positions, atomic radii, and probe
 radius.
@@ -176,9 +183,9 @@ radius.
      - ``1.657 A`` = PoreBlazer nitrogen sigma ``3.314 A`` / 2
    * - Grid shape
      - Per-framework grid matched to the PoreBlazer lattice at a nominal
-       ``0.25 A`` cubelet size
+       ``0.2 A`` cubelet size
    * - PoreBlazer lattice sampling
-     - ``500`` samples/atom
+     - ``1000`` samples/atom
    * - Surface method
      - deterministic sampling, ``1000`` points/atom, ``surface_radius_scale=1.122``
 
@@ -201,39 +208,39 @@ cell volume.
      - PoreBlazer fraction
    * - BEA
      - Reference zeolite
-     - ``499.967712``
-     - ``502.028531``
-     - ``-0.410%``
-     - ``0.119654``
-     - ``0.120148``
+     - ``507.425637``
+     - ``505.044764``
+     - ``0.471%``
+     - ``0.121439``
+     - ``0.120869``
    * - MWW
      - More confined zeolite
-     - ``428.552877``
-     - ``414.293536``
-     - ``3.442%``
-     - ``0.094839``
-     - ``0.091683``
+     - ``443.558702``
+     - ``426.519883``
+     - ``3.995%``
+     - ``0.098160``
+     - ``0.094389``
    * - FAU
      - More open zeolite
-     - ``2919.608324``
-     - ``2886.139921``
-     - ``1.160%``
-     - ``0.202346``
-     - ``0.200027``
+     - ``2932.657669``
+     - ``2883.903705``
+     - ``1.691%``
+     - ``0.203251``
+     - ``0.199872``
    * - UiO-66
      - Confined-cage MOF
-     - ``852.058013``
-     - ``926.447100``
-     - ``-8.030%``
-     - ``0.095892``
-     - ``0.104264``
+     - ``838.793724``
+     - ``917.710412``
+     - ``-8.599%``
+     - ``0.094400``
+     - ``0.103281``
    * - MOF-5
      - Very open-cage MOF
-     - ``7314.701198``
-     - ``7180.556990``
-     - ``1.868%``
-     - ``0.426009``
-     - ``0.418196``
+     - ``7429.451545``
+     - ``7510.769251``
+     - ``-1.083%``
+     - ``0.432692``
+     - ``0.437428``
 
 The corresponding accessible-surface comparison is kept in a separate table
 because the values use different numerical estimators: AtomVoxelizer samples
@@ -250,28 +257,58 @@ network-accessible ``S_AC`` estimate.
      - Difference
    * - BEA
      - ``499.912904``
-     - ``488.980000``
-     - ``2.236%``
+     - ``500.120000``
+     - ``-0.041%``
    * - MWW
      - ``389.703755``
-     - ``380.020000``
-     - ``2.548%``
+     - ``383.320000``
+     - ``1.665%``
    * - FAU
      - ``1791.682398``
-     - ``1706.190000``
-     - ``5.011%``
+     - ``1740.880000``
+     - ``2.918%``
    * - UiO-66
      - ``767.382180``
-     - ``764.160000``
-     - ``0.422%``
+     - ``762.550000``
+     - ``0.634%``
    * - MOF-5
      - ``3509.281932``
-     - ``3528.300000``
-     - ``-0.539%``
+     - ``3513.490000``
+     - ``-0.120%``
+
+End-to-End Timing
+^^^^^^^^^^^^^^^^^
+
+End-to-end wall time was recorded for each framework on an AMD EPYC 7551P
+32-core CPU using the same Python environment. Each value is one complete run
+of the framework-specific runner, including setup and analysis; these are not
+pure kernel benchmarks or repeated best/mean measurements.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Framework
+     - AtomVoxelizer (s)
+     - PoreBlazer (s)
+   * - BEA
+     - ``3.026``
+     - ``12.456``
+   * - MWW
+     - ``3.538``
+     - ``25.088``
+   * - FAU
+     - ``20.295``
+     - ``88.933``
+   * - UiO-66
+     - ``16.075``
+     - ``37.351``
+   * - MOF-5
+     - ``11.787``
+     - ``103.550``
 
 Across the five structures, the direct lattice-volume differences range from
-``-8.030%`` to ``3.442%`` and the surface-area differences range from
-``-0.539%`` to ``5.011%``. Small differences are expected because the two tools
+``-8.599%`` to ``3.995%`` and the surface-area differences range from
+``-0.120%`` to ``2.918%``. Small differences are expected because the two tools
 discretize and sample the structure independently. PoreBlazer's ``V_PO`` is a
 different free-volume estimator and is therefore not placed in the direct
 volume table. AtomVoxelizer does not currently compute pore size distributions;
