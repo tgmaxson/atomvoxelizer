@@ -148,12 +148,22 @@ area based on inflated atom surfaces:
        surface_radius_scale=1.122,
    )
 
-BEA Probe Comparison To PoreBlazer
-----------------------------------
+Probe Comparison To PoreBlazer
+------------------------------
 
-The BEA comparison used ``examples/zeolite/BEA.cif`` and matched PoreBlazer's
-default nitrogen probe setup. AtomVoxelizer was supplied only numerical arrays:
-cell, atomic positions, atomic radii, and probe radius.
+The comparison suite uses five periodic frameworks: BEA as the reference
+zeolite, MWW as a more confined zeolite, FAU as a more open zeolite, UiO-66 as
+a confined-cage MOF, and MOF-5 as a very open-cage MOF. The BEA and MWW
+structures are included in the repository examples. FAU is the idealized
+pure-silica framework structure from the
+`IZA-SC database <https://www.iza-structure.org/IZA-SC/framework_3d.php?ID=93>`_,
+and the UiO-66 and MOF-5 structures are from COD entries
+`4132633 <https://www.crystallography.net/4132633.html>`_ and
+`1516305 <https://www.crystallography.net/1516305.html>`_, respectively.
+
+Each run uses the same PoreBlazer-style nitrogen settings. AtomVoxelizer was
+supplied only numerical arrays: cell, atomic positions, atomic radii, and probe
+radius.
 
 .. list-table::
    :header-rows: 1
@@ -165,77 +175,104 @@ cell, atomic positions, atomic radii, and probe radius.
    * - Probe radius
      - ``1.657 A`` = PoreBlazer nitrogen sigma ``3.314 A`` / 2
    * - Grid shape
-     - ``50 x 50 x 103``
+     - Per-framework grid matched to the PoreBlazer lattice at a nominal
+       ``0.25 A`` cubelet size
+   * - PoreBlazer lattice sampling
+     - ``500`` samples/atom
    * - Surface method
      - deterministic sampling, ``1000`` points/atom, ``surface_radius_scale=1.122``
 
-The matching PoreBlazer ``input.dat`` was:
-
-.. code-block:: text
-
-   BEA.xyz
-   12.6320000000 12.6320000000 26.1860000000
-   90.0000000000 90.0000000000 90.0000000000
-
-The matching ``defaults.dat`` was:
-
-.. code-block:: text
-
-   UFF.atoms
-   2.58, 10.22, 298, 12.8
-   3.314
-   500
-   0.25
-   20.0, 0.25
-   21908391
-   1
-
-The direct probe-center lattice volume and accessible surface area agreed
-closely:
+The direct probe-center volume comparison is shown below. The PoreBlazer
+column is the volume obtained by counting points in its nitrogen-accessible
+lattice (``nitrogen_network.xyz``), which is the closest direct equivalent to
+AtomVoxelizer's accessible grid volume. Fractions are normalized by the unit
+cell volume.
 
 .. list-table::
    :header-rows: 1
+   :widths: 14 20 17 17 10 11 11
 
-   * - Quantity
-     - AtomVoxelizer
-     - PoreBlazer
+   * - Framework
+     - Role
+     - AtomVoxelizer volume (A^3)
+     - PoreBlazer N2 lattice volume (A^3)
      - Difference
-   * - Nitrogen probe-center lattice volume
-     - ``499.967712 A^3``
-     - ``502.028531 A^3``
+     - AtomVoxelizer fraction
+     - PoreBlazer fraction
+   * - BEA
+     - Reference zeolite
+     - ``499.967712``
+     - ``502.028531``
      - ``-0.410%``
-   * - Nitrogen probe-center lattice fraction
      - ``0.119654``
      - ``0.120148``
-     - ``-0.410%``
-   * - Accessible surface area
-     - ``499.912904 A^2``
-     - ``488.980000 A^2``
-     - ``2.236%``
+   * - MWW
+     - More confined zeolite
+     - ``428.552877``
+     - ``414.293536``
+     - ``3.442%``
+     - ``0.094839``
+     - ``0.091683``
+   * - FAU
+     - More open zeolite
+     - ``2919.608324``
+     - ``2886.139921``
+     - ``1.160%``
+     - ``0.202346``
+     - ``0.200027``
+   * - UiO-66
+     - Confined-cage MOF
+     - ``852.058013``
+     - ``926.447100``
+     - ``-8.030%``
+     - ``0.095892``
+     - ``0.104264``
+   * - MOF-5
+     - Very open-cage MOF
+     - ``7314.701198``
+     - ``7180.556990``
+     - ``1.868%``
+     - ``0.426009``
+     - ``0.418196``
 
-Small differences are expected because the two tools discretize and sample the
-structure independently. The close agreement indicates that the two
-probe-accessible volume and surface-area workflows are consistent for this BEA
-setup.
-
-Timing was measured on an AMD EPYC 7551P 32-core CPU from the same Python
-environment, using the end-to-end runner scripts for the matched setup. Each
-tool was run three times:
+The corresponding accessible-surface comparison is kept in a separate table
+because the values use different numerical estimators: AtomVoxelizer samples
+inflated atom surfaces deterministically, while PoreBlazer reports its
+network-accessible ``S_AC`` estimate.
 
 .. list-table::
    :header-rows: 1
+   :widths: 18 23 22 15
 
-   * - Tool
-     - Best time [s]
-     - Mean time [s]
-   * - AtomVoxelizer
-     - ``3.537``
-     - ``3.576``
-   * - PoreBlazer
-     - ``8.415``
-     - ``8.444``
+   * - Framework
+     - AtomVoxelizer sampled area (A^2)
+     - PoreBlazer network S_AC (A^2)
+     - Difference
+   * - BEA
+     - ``499.912904``
+     - ``488.980000``
+     - ``2.236%``
+   * - MWW
+     - ``389.703755``
+     - ``380.020000``
+     - ``2.548%``
+   * - FAU
+     - ``1791.682398``
+     - ``1706.190000``
+     - ``5.011%``
+   * - UiO-66
+     - ``767.382180``
+     - ``764.160000``
+     - ``0.422%``
+   * - MOF-5
+     - ``3509.281932``
+     - ``3528.300000``
+     - ``-0.539%``
 
-This timing is not a pure kernel benchmark because the workflows do different
-amounts of work. It is still a useful end-to-end comparison for the matched BEA
-probe-volume setup. AtomVoxelizer does not currently compute pore size
-distributions; PSD support is planned for future work.
+Across the five structures, the direct lattice-volume differences range from
+``-8.030%`` to ``3.442%`` and the surface-area differences range from
+``-0.539%`` to ``5.011%``. Small differences are expected because the two tools
+discretize and sample the structure independently. PoreBlazer's ``V_PO`` is a
+different free-volume estimator and is therefore not placed in the direct
+volume table. AtomVoxelizer does not currently compute pore size distributions;
+PSD support is planned for future work.

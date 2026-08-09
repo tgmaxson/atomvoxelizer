@@ -78,9 +78,9 @@ accessible volume from a user-supplied grid, atomic positions, radii, and probe
 radius. ``probe_accessible_surface_area`` estimates sampled accessible surface
 area from inflated atom surfaces.
 
-See :doc:`analysis` for the method and a BEA comparison against PoreBlazer,
-including the PoreBlazer input files, matched AtomVoxelizer setup, timing, and
-agreement for probe-accessible volume and surface area.
+See :doc:`analysis` for the method and a five-framework comparison against
+PoreBlazer, including the matched AtomVoxelizer setup and agreement for
+probe-accessible volume and surface area.
 
 Finite Wulff Distance Surface
 -----------------------------
