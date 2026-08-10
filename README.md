@@ -176,7 +176,7 @@ pytest
 Run the mask-generation benchmark with:
 
 ```bash
-python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface --numba-threads 24 --plot mask_generation_scaling.png
+python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface --resolution 0.5 --repeats 3 --numba-threads 24 --plot mask_generation_scaling.png
 python benchmarks/benchmark_dtypes.py --backend numpy
 python benchmarks/benchmark_numba_memory_order.py
 python benchmarks/benchmark_numba_cell_coloring.py --thread-scaling --thread-counts 1 2 4 8 16 24 28
@@ -184,9 +184,16 @@ python benchmarks/benchmark_cupy_cell_coloring.py --sizes 923 2869 --resolution 
 ```
 
 This benchmark scales zeolite, nanoparticle, and surface systems from small
-models to roughly 3000 atoms and compares a direct atom-grid distance scan with
-`VoxelGrid` NumPy, `VoxelGridNumba`, and `VoxelGridCpp` when the compiled
-extension is available.
+models to roughly 6000 atoms and compares a direct atom-grid distance scan with
+`VoxelGrid` NumPy, `VoxelGridNumba`, the opt-in Numba 27-color path, and
+`VoxelGridCpp` when the compiled extension is available. Add `--cupy` on a
+CUDA-equipped machine to include the experimental CuPy GPU backend;
+its coloring plans are prepared before timing, which includes synchronization
+and transfer of the completed mask to host memory.
+When `--csv` is supplied, the file is initialized with a header and rewritten
+after each completed workload so a running Slurm job can be monitored.
+The CSV retains all measured backend series, and the rendered scaling plot
+shows all six backends for comparison.
 
 Run the built-in structure benchmark helper with:
 
@@ -194,10 +201,9 @@ Run the built-in structure benchmark helper with:
 python benchmarks/benchmark_structures.py
 ```
 
-The main benchmark compares a simple direct atom-grid distance scan with
-`VoxelGrid` NumPy, `VoxelGridNumba`, and `VoxelGridCpp`. CuPy and Taichi
-backends are available experimentally, but they are not the focus of the
-default benchmark.
+The main benchmark compares a simple direct atom-grid distance scan with the
+CPU backends above. CuPy and Taichi backends remain available experimentally,
+with CuPy included explicitly using `--cupy`.
 
 ## Documentation
 

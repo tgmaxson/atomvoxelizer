@@ -7,7 +7,18 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-10
+
+### Added
+- Added broader probe-accessibility validation against PoreBlazer-style
+  calculations across multiple zeolite and MOF systems.
+- Added the experimental CuPy backend to the mask-generation benchmark and
+  expanded the benchmark systems to roughly 6000 atoms with checkpointed CSV
+  output.
+
 ### Changed
+- Expanded the documentation and benchmark figures for the multi-framework
+  validation and backend comparisons.
 - Build pure-Python release wheels by default; compiling the optional C++
   backend now requires ``ATOMVOXELIZER_BUILD_CPP=1``.
 

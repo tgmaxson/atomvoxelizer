@@ -165,7 +165,7 @@ Run the CPU mask-generation benchmark with:
 .. code-block:: bash
 
    python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
-       --numba-threads 24 --plot mask_generation_scaling.png
+       --resolution 0.5 --repeats 3 --numba-threads 24 --plot mask_generation_scaling.png
    python benchmarks/benchmark_numba_memory_order.py
    python benchmarks/benchmark_numba_cell_coloring.py --thread-scaling \
        --thread-counts 1 2 4 8 16 24 28 \
@@ -175,12 +175,14 @@ Run the CPU mask-generation benchmark with:
 
 This benchmark compares a simple direct atom-grid distance scan with
 ``VoxelGrid`` NumPy, ``VoxelGridNumba``, opt-in ``VoxelGridNumba`` 27-color
-addition, and ``VoxelGridCpp`` from small models to roughly 3000 atoms for
-zeolite, nanoparticle, and surface workloads. The documented 27-color
-measurements use 24 Numba threads. CuPy and Taichi remain
-experimental backends, but they are not emphasized in the default benchmark
-because current atom-by-atom GPU updates are generally not competitive for these
-workloads.
+addition, and ``VoxelGridCpp`` from small models to roughly 6000 atoms for
+zeolite, nanoparticle, and surface workloads. The documented CPU measurements
+use 24 Numba threads. The optional ``--cupy`` flag adds the CuPy GPU
+backend; its coloring plans are prepared before timed repetitions, while the
+reported timing includes synchronization and copying the completed mask back to
+host memory. The shared scaling figure includes all six measured backend
+series, including C++ and Numba 27-color. CuPy remains an experimental backend
+for general GPU-resident workflows.
 
 The Numba cell-coloring thread sweep used an AMD EPYC 7551P 32-core CPU with
 Python 3.12.12, NumPy 2.4.1, and Numba 0.64.0. For a 2951-atom Pt nanoparticle

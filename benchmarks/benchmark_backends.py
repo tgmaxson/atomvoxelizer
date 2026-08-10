@@ -27,7 +27,16 @@ def make_atoms_workload(atoms, radius_scale):
 
 def make_zeolite_workloads(framework, radius_scale):
     atoms = read(ROOT / "examples" / "zeolite" / f"{framework.upper()}.cif")
-    scale_factors = [(1, 1, 1), (1, 1, 2), (1, 2, 2), (2, 2, 2), (2, 2, 4)]
+    scale_factors = [
+        (1, 1, 1),
+        (1, 1, 2),
+        (1, 2, 2),
+        (2, 2, 2),
+        (2, 2, 4),
+        (2, 2, 5),
+        (2, 2, 6),
+        (2, 3, 5),
+    ]
     workloads = []
     for scale in scale_factors:
         scaled = atoms.repeat(scale)
@@ -58,7 +67,7 @@ def center_cluster(atoms, padding):
 
 
 def make_nanoparticle_workloads(radius_scale, padding):
-    target_sizes = [55, 147, 309, 561, 923, 1415, 2057, 2869]
+    target_sizes = [55, 147, 309, 561, 923, 1415, 2057, 2869, 3400, 3800, 5000, 5700]
     workloads = []
     for size in target_sizes:
         atoms = wulff_construction(
@@ -85,7 +94,19 @@ def make_nanoparticle_workloads(radius_scale, padding):
 
 
 def make_surface_workloads(radius_scale):
-    sizes = [(4, 4, 3), (6, 6, 4), (8, 8, 5), (12, 12, 5), (16, 16, 6), (22, 22, 6)]
+    sizes = [
+        (4, 4, 3),
+        (6, 6, 4),
+        (8, 8, 5),
+        (12, 12, 5),
+        (16, 16, 6),
+        (20, 20, 6),
+        (22, 22, 6),
+        (24, 24, 6),
+        (25, 25, 6),
+        (28, 28, 6),
+        (31, 31, 6),
+    ]
     workloads = []
     for size in sizes:
         atoms = fcc111("Pt", size=size, vacuum=6.0, a=3.92)
@@ -174,6 +195,35 @@ def make_cpp_mask(cell, resolution, centers, radii):
     return grid.to_numpy(), grid.gpts
 
 
+def prepare_cupy_plans(cell, resolution, centers, radii):
+    module = importlib.import_module("atomvoxelizer.cupy_backend")
+    plan_grid = module.VoxelGridCuPy(cell=cell, resolution=resolution, dtype=np.float32)
+    unique_radii = np.unique(radii)
+    coloring_radius = float(np.max(unique_radii))
+    plans = []
+    for radius in unique_radii:
+        selected = radii == radius
+        plans.append(
+            plan_grid.prepare_cell_coloring(
+                centers[selected],
+                float(radius),
+                coloring_radius=coloring_radius,
+            )
+        )
+    return plans, plan_grid.gpts
+
+
+def make_cupy_mask(cell, resolution, centers, radii, plans=None):
+    module = importlib.import_module("atomvoxelizer.cupy_backend")
+    if plans is None:
+        plans, _ = prepare_cupy_plans(cell, resolution, centers, radii)
+    grid = module.VoxelGridCuPy(cell=cell, resolution=resolution, dtype=np.float32)
+    for plan in plans:
+        grid.apply_prepared_cell_coloring(plan, value=1.0)
+    grid.clamp_grid(0.0, 1.0)
+    return grid.to_numpy(), grid.gpts
+
+
 def time_call(func, repeats):
     times = []
     value = None
@@ -191,6 +241,16 @@ def warm_numba():
         radii = np.array([1.0], dtype=float)
         make_numba_mask(cell, 1.0, centers, radii)
         make_numba_cell_colored_mask(cell, 1.0, centers, radii)
+    except Exception:
+        pass
+
+
+def warm_cupy():
+    try:
+        cell = np.eye(3) * 8.0
+        centers = np.array([[4.0, 4.0, 4.0]], dtype=float)
+        radii = np.array([1.0], dtype=float)
+        make_cupy_mask(cell, 1.0, centers, radii)
     except Exception:
         pass
 
@@ -269,6 +329,30 @@ def benchmark_one(workload, methods, resolution, repeats, include_direct):
             )
         except Exception as exc:
             rows.append(missing_row(workload, "VoxelGrid C++", gpts, str(exc)))
+
+    if "cupy" in methods:
+        try:
+            cupy_plans, cupy_gpts = prepare_cupy_plans(
+                cell,
+                resolution,
+                centers,
+                radii,
+            )
+            cupy_times, (cupy_values, cupy_gpts) = time_call(
+                lambda: make_cupy_mask(cell, resolution, centers, radii, plans=cupy_plans),
+                repeats=repeats,
+            )
+            rows.append(
+                row_from_timing(
+                    workload,
+                    "VoxelGrid CuPy",
+                    cupy_times,
+                    cupy_gpts,
+                    cupy_values,
+                )
+            )
+        except Exception as exc:
+            rows.append(missing_row(workload, "VoxelGrid CuPy", gpts, str(exc)))
 
     if include_direct:
         direct_times, direct_values = time_call(
@@ -357,6 +441,16 @@ def write_csv(rows, output_path):
         writer.writerows(rows)
 
 
+def read_csv_rows(input_path):
+    with open(input_path, newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    for row in rows:
+        row["atoms"] = int(row["atoms"])
+        for key in ("best_s", "mean_s", "std_s"):
+            row[key] = float(row[key])
+    return rows
+
+
 def plot_rows(rows, output_path):
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
     import matplotlib.pyplot as plt
@@ -367,7 +461,16 @@ def plot_rows(rows, output_path):
         "VoxelGrid Numba": "#2f9e44",
         "VoxelGrid Numba 27-color": "#d97706",
         "VoxelGrid C++": "#7c4dff",
+        "VoxelGrid CuPy": "#0891b2",
     }
+    plot_methods = [
+        "Direct atom-grid scan",
+        "VoxelGrid NumPy",
+        "VoxelGrid Numba",
+        "VoxelGrid Numba 27-color",
+        "VoxelGrid C++",
+        "VoxelGrid CuPy",
+    ]
     markers = {
         "zeolite": "o",
         "nanoparticle": "s",
@@ -376,13 +479,8 @@ def plot_rows(rows, output_path):
     workloads = [name for name in ["zeolite", "nanoparticle", "surface"] if any(row["workload"] == name for row in rows)]
     fig, ax = plt.subplots(figsize=(7.2, 4.6), dpi=220)
 
-    for method in [
-        "Direct atom-grid scan",
-        "VoxelGrid NumPy",
-        "VoxelGrid Numba",
-        "VoxelGrid Numba 27-color",
-        "VoxelGrid C++",
-    ]:
+    present_methods = [method for method in plot_methods if any(row["method"] == method for row in rows)]
+    for method in plot_methods:
         for workload in workloads:
             points = [
                 row
@@ -399,10 +497,14 @@ def plot_rows(rows, output_path):
                 color=colors[method],
                 label=f"{method}, {workload}",
                 linewidth=1.8,
-                markersize=4.5,
+                markersize=6.0,
             )
     ax.set_yscale("log")
-    finite_times = [row["best_s"] for row in rows if np.isfinite(row["best_s"])]
+    finite_times = [
+        row["best_s"]
+        for row in rows
+        if row["method"] in present_methods and np.isfinite(row["best_s"])
+    ]
     if finite_times:
         ax.set_ylim(min(finite_times) * 0.15, max(finite_times) * 4.0)
     ax.set_xlabel("Atoms")
@@ -413,6 +515,7 @@ def plot_rows(rows, output_path):
     method_handles = [
         plt.Line2D([0], [0], color=color, lw=2.0, label=method.replace("VoxelGrid ", ""))
         for method, color in colors.items()
+        if method in present_methods
     ]
     system_handles = [
         plt.Line2D([0], [0], color="#4a4a4a", marker=marker, linestyle="None", label=workload.capitalize())
@@ -428,7 +531,7 @@ def plot_rows(rows, output_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Benchmark direct atom-grid mask generation against AtomVoxelizer CPU backends."
+        description="Benchmark direct atom-grid mask generation against AtomVoxelizer CPU and GPU backends."
     )
     parser.add_argument(
         "--workloads",
@@ -457,7 +560,20 @@ def main():
         help="Skip the opt-in Numba 27-color cell-colored add path.",
     )
     parser.add_argument("--no-cpp", action="store_true", help="Skip the optional C++ backend.")
+    parser.add_argument(
+        "--cupy",
+        action="store_true",
+        help="Include the CuPy GPU backend (requires a visible CUDA device).",
+    )
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="Append only workload scales not already present in --csv.",
+    )
     args = parser.parse_args()
+
+    if args.append and not args.csv:
+        parser.error("--append requires --csv")
 
     methods = ["numpy"]
     set_numba_threads(args.numba_threads)
@@ -469,10 +585,19 @@ def main():
         warm_numba()
     if not args.no_cpp:
         methods.append("cpp")
+    if args.cupy:
+        methods.append("cupy")
+        warm_cupy()
 
     workloads = make_workloads(args.workloads, args.framework, args.radius_scale, args.padding)
-    rows = []
-    for workload in workloads:
+    rows = read_csv_rows(args.csv) if args.append and Path(args.csv).exists() else []
+    existing_workloads = {(row["workload"], row["scale"]) for row in rows}
+    if args.csv and not args.append:
+        write_csv(rows, args.csv)
+    for index, workload in enumerate(workloads, start=1):
+        workload_key = (workload["workload"], workload["scale"])
+        if workload_key in existing_workloads:
+            continue
         rows.extend(
             benchmark_one(
                 workload,
@@ -481,6 +606,13 @@ def main():
                 repeats=args.repeats,
                 include_direct=not args.no_direct,
             )
+        )
+        existing_workloads.add(workload_key)
+        if args.csv:
+            write_csv(rows, args.csv)
+        print(
+            f"completed {index}/{len(workloads)}: {workload['workload']} {workload['scale']}",
+            flush=True,
         )
 
     print_table(rows)

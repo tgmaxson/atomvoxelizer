@@ -172,6 +172,9 @@ Run tests and benchmarks with:
 
    pytest
    python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
-       --numba-threads 24 --plot mask_generation_scaling.png
+       --resolution 0.5 --repeats 3 --numba-threads 24 --plot mask_generation_scaling.png
    python benchmarks/benchmark_dtypes.py --backend numpy
    python benchmarks/benchmark_structures.py
+
+On a CUDA-equipped machine, add ``--cupy`` to include the experimental CuPy
+27-color GPU backend in the mask-generation benchmark.

@@ -146,12 +146,18 @@ Run the mask-generation benchmark with:
 .. code-block:: bash
 
    python benchmarks/benchmark_backends.py --workloads zeolite nanoparticle surface \
-       --numba-threads 24 --plot mask_generation_scaling.png
+       --resolution 0.5 --repeats 3 --numba-threads 24 --plot mask_generation_scaling.png
 
-The benchmark scales each workload from small systems to roughly 3000 atoms and
+The benchmark scales each workload from small systems to roughly 6000 atoms and
 compares a simple direct atom-grid distance scan with ``VoxelGrid`` NumPy,
 ``VoxelGridNumba``, opt-in ``VoxelGridNumba`` 27-color addition, and
-``VoxelGridCpp``.
+``VoxelGridCpp``. Passing ``--cupy`` also measures the CuPy GPU backend;
+its coloring plans are prepared before timing, which includes device
+synchronization and transfer of the completed mask to host memory.
+When a CSV path is supplied, the benchmark rewrites it after each completed
+workload so partial results remain available during a long Slurm run.
+The CSV retains all measured series, and the rendered scaling plot shows all
+six measured backends, including C++ and Numba 27-color.
 
 The CPU cell-coloring thread sweep checks whether the planned 27-color Numba
 path benefits from CPU parallelism:
@@ -180,9 +186,9 @@ high-level Torch prototypes for a same-radius Pt nanoparticle workload:
        --csv benchmarks/cupy_cell_coloring_rtx4090.csv \
        --plot docs/source/_static/cupy_cell_coloring_scaling.png
 
-The documentation figure was generated on a front-partition NVIDIA GeForce RTX
-4090. The CPU Numba series was measured in the same Slurm job for a direct
-comparison against the GPU implementations.
+The mask-generation documentation figure was regenerated on a front-partition
+NVIDIA GPU with all CPU backends rerun in the same Slurm job. Its larger markers
+make the zeolite, nanoparticle, and surface shapes easier to distinguish.
 
 Run the dtype benchmark to compare grid storage types:
 
