@@ -7,6 +7,14 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-13
+
+### Added
+- Support for triclinic LJ insertion grids using atom-centered cutoff spheres,
+  reciprocal-vector bounds, and explicit periodic-image accumulation.
+- A reproducible continuous-position insertion-sampling benchmark and documented
+  variance-reduction results, with proposal-density corrections and setup costs.
+
 ## [1.1.0] - 2026-11-13
 
 ### Added

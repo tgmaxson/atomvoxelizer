@@ -1,0 +1,295 @@
+{
+  "seed": 20261113,
+  "repeats": 64,
+  "sample_counts": [
+    256,
+    1024,
+    4096
+  ],
+  "host": "8-site carbon cage, 16 A orthogonal periodic cell",
+  "probe": "Ar",
+  "cutoff_angstrom": 8.0,
+  "full_cell_uniform_fraction": 0.05,
+  "numpy_version": "2.2.6",
+  "favorable_threshold_ev": -0.008,
+  "temperatures": [
+    {
+      "temperature_k": 298.15,
+      "quadrature": [
+        {
+          "resolution_angstrom": 0.25,
+          "value": 0.9239280205464007
+        },
+        {
+          "resolution_angstrom": 0.125,
+          "value": 0.9239455609335379
+        }
+      ],
+      "methods": [
+        {
+          "method": "uniform",
+          "resolution_angstrom": null,
+          "build_seconds": 0.0,
+          "sampling_and_energy_seconds": 0.30373442359268665,
+          "estimates": [
+            {
+              "samples": 256,
+              "estimate": 0.9284585023520018,
+              "repeat_sd": 0.03289686155880599,
+              "standard_error": 0.004112107694850748,
+              "rmse": 0.032949365866002396
+            },
+            {
+              "samples": 1024,
+              "estimate": 0.9249276762473688,
+              "repeat_sd": 0.01781204455217882,
+              "standard_error": 0.0022265055690223524,
+              "rmse": 0.017699608881824962
+            },
+            {
+              "samples": 4096,
+              "estimate": 0.9234666098772257,
+              "repeat_sd": 0.008479995907917806,
+              "standard_error": 0.0010599994884897257,
+              "rmse": 0.008427106608857328
+            }
+          ],
+          "favorable_fraction": 0.142364501953125,
+          "variance_reduction": 1.0
+        },
+        {
+          "method": "grid 1 A",
+          "resolution_angstrom": 1.0,
+          "build_seconds": 0.006270691752433777,
+          "sampling_and_energy_seconds": 0.2477543205022812,
+          "estimates": [
+            {
+              "samples": 256,
+              "estimate": 0.9199172780669678,
+              "repeat_sd": 0.025920952638814755,
+              "standard_error": 0.0032401190798518444,
+              "rmse": 0.026031221195041154
+            },
+            {
+              "samples": 1024,
+              "estimate": 0.923741156484682,
+              "repeat_sd": 0.01497320166181737,
+              "standard_error": 0.0018716502077271713,
+              "rmse": 0.014857169134262332
+            },
+            {
+              "samples": 4096,
+              "estimate": 0.9245681877174885,
+              "repeat_sd": 0.007161163572385082,
+              "standard_error": 0.0008951454465481352,
+              "rmse": 0.007132225631040565
+            }
+          ],
+          "favorable_fraction": 0.21051025390625,
+          "variance_reduction": 1.4022456380692523
+        },
+        {
+          "method": "grid 0.5 A",
+          "resolution_angstrom": 0.5,
+          "build_seconds": 0.037954363971948624,
+          "sampling_and_energy_seconds": 0.2587751280516386,
+          "estimates": [
+            {
+              "samples": 256,
+              "estimate": 0.9246067557187279,
+              "repeat_sd": 0.014460360678393977,
+              "standard_error": 0.001807545084799247,
+              "rmse": 0.014362172198508941
+            },
+            {
+              "samples": 1024,
+              "estimate": 0.9223362110970448,
+              "repeat_sd": 0.006406509628435112,
+              "standard_error": 0.000800813703554389,
+              "rmse": 0.006556833834073532
+            },
+            {
+              "samples": 4096,
+              "estimate": 0.9229425780017947,
+              "repeat_sd": 0.0028999558716968354,
+              "standard_error": 0.00036249448396210443,
+              "rmse": 0.003047017651451044
+            }
+          ],
+          "favorable_fraction": 0.21487808227539062,
+          "variance_reduction": 8.550834615674264
+        },
+        {
+          "method": "grid 0.25 A",
+          "resolution_angstrom": 0.25,
+          "build_seconds": 0.3219457287341356,
+          "sampling_and_energy_seconds": 0.28159800358116627,
+          "estimates": [
+            {
+              "samples": 256,
+              "estimate": 0.9241531298822114,
+              "repeat_sd": 0.008674856209484222,
+              "standard_error": 0.0010843570261855277,
+              "rmse": 0.008609319657408621
+            },
+            {
+              "samples": 1024,
+              "estimate": 0.9246407012793874,
+              "repeat_sd": 0.0037995473454063176,
+              "standard_error": 0.0004749434181757897,
+              "rmse": 0.003833302607405695
+            },
+            {
+              "samples": 4096,
+              "estimate": 0.9244125300231265,
+              "repeat_sd": 0.0022382667802535294,
+              "standard_error": 0.00027978334753169117,
+              "rmse": 0.002269277327402227
+            }
+          ],
+          "favorable_fraction": 0.216033935546875,
+          "variance_reduction": 14.35382302193202
+        }
+      ]
+    },
+    {
+      "temperature_k": 77.0,
+      "quadrature": [
+        {
+          "resolution_angstrom": 0.25,
+          "value": 1.865487758123864
+        },
+        {
+          "resolution_angstrom": 0.125,
+          "value": 1.8656718053556458
+        }
+      ],
+      "methods": [
+        {
+          "method": "uniform",
+          "resolution_angstrom": null,
+          "build_seconds": 0.0,
+          "sampling_and_energy_seconds": 0.33630067110061646,
+          "estimates": [
+            {
+              "samples": 256,
+              "estimate": 1.8673685581842818,
+              "repeat_sd": 0.08112100902651062,
+              "standard_error": 0.010140126128313828,
+              "rmse": 0.08050263919737408
+            },
+            {
+              "samples": 1024,
+              "estimate": 1.8596287057150913,
+              "repeat_sd": 0.0426854725249462,
+              "standard_error": 0.005335684065618275,
+              "rmse": 0.04277965747286337
+            },
+            {
+              "samples": 4096,
+              "estimate": 1.8684005379742223,
+              "repeat_sd": 0.021875214865300346,
+              "standard_error": 0.002734401858162543,
+              "rmse": 0.021874506933524638
+            }
+          ],
+          "favorable_fraction": 0.14307022094726562,
+          "variance_reduction": 1.0
+        },
+        {
+          "method": "grid 1 A",
+          "resolution_angstrom": 1.0,
+          "build_seconds": 0.006270691752433777,
+          "sampling_and_energy_seconds": 0.23379922471940517,
+          "estimates": [
+            {
+              "samples": 256,
+              "estimate": 1.8633269628594282,
+              "repeat_sd": 0.07063069030694498,
+              "standard_error": 0.008828836288368122,
+              "rmse": 0.07011593506016185
+            },
+            {
+              "samples": 1024,
+              "estimate": 1.8670145442165755,
+              "repeat_sd": 0.036446590520279765,
+              "standard_error": 0.004555823815034971,
+              "rmse": 0.03618565154267583
+            },
+            {
+              "samples": 4096,
+              "estimate": 1.8666089384723976,
+              "repeat_sd": 0.01670233293494346,
+              "standard_error": 0.0020877916168679325,
+              "rmse": 0.01659780919617846
+            }
+          ],
+          "favorable_fraction": 0.26262664794921875,
+          "variance_reduction": 1.7153406600323922
+        },
+        {
+          "method": "grid 0.5 A",
+          "resolution_angstrom": 0.5,
+          "build_seconds": 0.037954363971948624,
+          "sampling_and_energy_seconds": 0.2514967378228903,
+          "estimates": [
+            {
+              "samples": 256,
+              "estimate": 1.8659583847316585,
+              "repeat_sd": 0.03720112373139144,
+              "standard_error": 0.00465014046642393,
+              "rmse": 0.0369104582504685
+            },
+            {
+              "samples": 1024,
+              "estimate": 1.8683973749043594,
+              "repeat_sd": 0.018670529840312828,
+              "standard_error": 0.0023338162300391035,
+              "rmse": 0.018723533739315703
+            },
+            {
+              "samples": 4096,
+              "estimate": 1.866262660575842,
+              "repeat_sd": 0.009538421084083561,
+              "standard_error": 0.0011923026355104452,
+              "rmse": 0.009482035704102654
+            }
+          ],
+          "favorable_fraction": 0.28980255126953125,
+          "variance_reduction": 5.259587361660668
+        },
+        {
+          "method": "grid 0.25 A",
+          "resolution_angstrom": 0.25,
+          "build_seconds": 0.3219457287341356,
+          "sampling_and_energy_seconds": 0.27750311233103275,
+          "estimates": [
+            {
+              "samples": 256,
+              "estimate": 1.8618670299520201,
+              "repeat_sd": 0.018942236283379696,
+              "standard_error": 0.002367779535422462,
+              "rmse": 0.019174938105742483
+            },
+            {
+              "samples": 1024,
+              "estimate": 1.8646220629986188,
+              "repeat_sd": 0.009154511229075134,
+              "standard_error": 0.0011443139036343918,
+              "rmse": 0.009143171252325338
+            },
+            {
+              "samples": 4096,
+              "estimate": 1.8655967045006503,
+              "repeat_sd": 0.004670801767155256,
+              "standard_error": 0.000583850220894407,
+              "rmse": 0.00463477596071733
+            }
+          ],
+          "favorable_fraction": 0.2949638366699219,
+          "variance_reduction": 21.934199200218938
+        }
+      ]
+    }
+  ]
+}

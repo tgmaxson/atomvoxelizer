@@ -98,32 +98,34 @@ def lj_insertion_grid(
 ):
     """Return a float64 VoxelGrid of single-atom insertion energies in eV.
 
-    Evaluate at actual voxel centers without snapping framework atoms. Cells
-    must have three orthogonal row vectors and are periodic in all directions.
-    The minimum-image LJ potential is truncated, unshifted, without tail
-    corrections. ``cutoff`` defaults to half the shortest cell vector and must
-    not exceed it. Positive infinity marks an exact atom overlap.
+    Evaluate atom-centered LJ spheres at actual voxel centers without snapping
+    atoms. Any nonsingular cell with row lattice vectors is supported and is
+    periodic in all directions. All periodic images strictly inside ``cutoff``
+    contribute, including multiple images when the sphere spans the cell.
+    The potential is truncated, unshifted, without tail corrections. The default
+    cutoff is half the shortest perpendicular cell height. Positive infinity
+    marks an exact atom overlap.
 
     ``parameters=None`` selects the bundled UFF subset. A custom mapping must
     contain LJParameters for every framework label and the probe. Geometric
     sigma/epsilon mixing follows UFF; ``mixing='lorentz-berthelot'`` uses an
     arithmetic sigma mean instead. Work arrays scale with ``chunk_size``;
-    computation scales with the number of atoms times the number of voxels.
+    only the fractional bounding box of each atom's cutoff sphere is visited.
     """
     cell = np.asarray(cell, dtype=float)
     if cell.shape != (3, 3) or not np.all(np.isfinite(cell)):
         raise ValueError("cell must be a finite (3, 3) matrix")
-    metric = cell @ cell.T
-    lengths = np.sqrt(np.diag(metric))
-    if np.any(lengths <= 0) or not np.allclose(
-        metric / np.outer(lengths, lengths), np.eye(3), atol=1e-12, rtol=0
-    ):
-        raise ValueError("insertion grids require orthogonal, nonzero cell vectors")
-    cutoff = min(lengths) / 2 if cutoff is None else float(cutoff)
-    if not np.isfinite(cutoff) or not 0 < cutoff <= min(lengths) / 2:
-        raise ValueError(
-            "cutoff must be positive and at most half the shortest cell vector"
-        )
+    try:
+        inverse = np.linalg.inv(cell)
+    except np.linalg.LinAlgError as exc:
+        raise ValueError("cell must be nonsingular") from exc
+    # A sphere projects onto fractional axis i with radius rc*|inv(cell)[:,i]|.
+    # These reciprocal-vector bounds remain valid for skew cells.
+    reciprocal_norms = np.linalg.norm(inverse, axis=0)
+    default_cutoff = 0.5 / reciprocal_norms.max()
+    cutoff = default_cutoff if cutoff is None else float(cutoff)
+    if not np.isfinite(cutoff) or cutoff <= 0:
+        raise ValueError("cutoff must be finite and positive")
     if mixing not in ("geometric", "lorentz-berthelot"):
         raise ValueError("mixing must be 'geometric' or 'lorentz-berthelot'")
     if not isinstance(chunk_size, (int, np.integer)) or chunk_size <= 0:
@@ -160,25 +162,39 @@ def lj_insertion_grid(
         )
     grid = VoxelGrid(cell, resolution=resolution, gpts=gpts, dtype=np.float64)
     flat = grid.grid.ravel()
-    fractional_atoms = positions @ grid.cell_inv
-    for start in range(0, flat.size, chunk_size):
-        stop = min(start + chunk_size, flat.size)
-        indices = np.column_stack(np.unravel_index(np.arange(start, stop), grid.gpts))
-        frac = (indices + 0.5) / grid.gpts
-        energies = flat[start:stop]
-        for atom, symbol in zip(fractional_atoms, symbols):
-            pair = pairs[symbol]
-            if pair.epsilon == 0:
-                continue
-            delta = frac - atom
-            delta -= np.rint(delta)
-            distance2 = np.sum((delta @ cell) ** 2, axis=1)
-            active = (distance2 > 0) & (distance2 < cutoff**2)
+    fractional_unwrapped = positions @ inverse
+    translations = np.floor(fractional_unwrapped)
+    fractional_atoms = fractional_unwrapped - translations
+    wrapped_positions = positions - translations @ cell
+    extent = cutoff * reciprocal_norms
+    for atom, cartesian_atom, symbol in zip(
+        fractional_atoms, wrapped_positions, symbols
+    ):
+        pair = pairs[symbol]
+        if pair.epsilon == 0:
+            continue
+        lower = np.ceil((atom - extent) * grid.gpts - 0.5).astype(int)
+        upper = np.floor((atom + extent) * grid.gpts - 0.5).astype(int)
+        shape = upper - lower + 1
+        candidates = int(np.prod(shape))
+        for start in range(0, candidates, chunk_size):
+            stop = min(start + chunk_size, candidates)
+            indices = (
+                np.column_stack(np.unravel_index(np.arange(start, stop), shape)) + lower
+            )
+            delta = ((indices + 0.5) / grid.gpts) @ cell - cartesian_atom
+            distance2 = np.sum(delta**2, axis=1)
+            active = distance2 < cutoff**2
+            indices, distance2 = indices[active], distance2[active]
+            nonzero = distance2 > 0
+            values = np.full(len(distance2), np.inf)
             with np.errstate(over="ignore", invalid="ignore"):
-                ratio6 = (pair.sigma**2 / distance2[active]) ** 3
-                # This form stays +inf for overflow near a repulsive core.
-                energies[active] += 4 * pair.epsilon * ratio6 * (ratio6 - 1)
-            energies[distance2 == 0] = np.inf
+                ratio6 = (pair.sigma**2 / distance2[nonzero]) ** 3
+                values[nonzero] = 4 * pair.epsilon * ratio6 * (ratio6 - 1)
+            wrapped = np.ravel_multi_index(tuple((indices % grid.gpts).T), grid.gpts)
+            # add.at also accumulates distinct periodic images of the same atom
+            # when a cutoff sphere wraps onto the same voxel more than once.
+            np.add.at(flat, wrapped, values)
     return grid
 
 

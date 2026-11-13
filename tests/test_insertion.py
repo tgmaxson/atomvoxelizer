@@ -124,14 +124,14 @@ def test_probabilities_stability_ratios_support_and_exclusion():
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"cutoff": 6},
+        {"cutoff": 0},
         {"cutoff": np.nan},
         {"chunk_size": 0},
         {"gpts": (2, 0, 2)},
         {"gpts": (2, 1.5, 2)},
         {"mixing": "invalid"},
         {"resolution": -1, "gpts": None},
-        {"cell": [[10, 1, 0], [0, 10, 0], [0, 0, 10]]},
+        {"cell": [[10, 0, 0], [10, 0, 0], [0, 0, 10]]},
         {"positions": [[np.nan, 0, 0]]},
     ],
 )
@@ -191,3 +191,58 @@ def test_offline_example(tmp_path):
         indices = (data["samples_angstrom"] / 16 * data["gpts"]).astype(int)
         expected = data["probability"][tuple(indices.T)] / (16**3 / 8**3)
         np.testing.assert_allclose(data["proposal_density_per_angstrom3"], expected)
+
+
+@pytest.mark.parametrize("cutoff", [2.0, 7.0])
+def test_skew_cell_spheres_match_explicit_periodic_image_sum(cutoff):
+    from itertools import product
+
+    # Strong skew: a sphere's fractional reach is larger than rc/|cell[i]|.
+    cell = np.array([[8.0, 0, 0], [7.0, 3.0, 0], [1.0, 0.5, 7.0]])
+    positions = np.array([[0.12, 0.91, 0.27], [0.87, 0.08, 0.66]]) @ cell
+    params = {"X": LJParameters(1.3, 0.02)}
+    grid = lj_insertion_grid(
+        cell,
+        positions,
+        ["X"] * 2,
+        "X",
+        gpts=(5, 4, 6),
+        cutoff=cutoff,
+        parameters=params,
+        chunk_size=11,
+    )
+    centers = grid.voxel_centers()
+    expected = np.zeros_like(grid.grid)
+    for atom in positions:
+        for image in product(range(-5, 6), repeat=3):
+            delta = centers - (atom + np.array(image) @ cell)
+            r2 = np.sum(delta**2, axis=-1)
+            active = (r2 > 0) & (r2 < cutoff**2)
+            r6 = (1.3**2 / r2[active]) ** 3
+            expected[active] += 4 * 0.02 * r6 * (r6 - 1)
+    np.testing.assert_allclose(grid.grid, expected, rtol=1e-10, atol=1e-12)
+    shifted = lj_insertion_grid(
+        cell,
+        positions + 2 * cell[1] - cell[0],
+        ["X"] * 2,
+        "X",
+        gpts=(5, 4, 6),
+        cutoff=cutoff,
+        parameters=params,
+    )
+    np.testing.assert_allclose(shifted.grid, expected, rtol=1e-10, atol=1e-12)
+
+
+def test_skew_cell_default_cutoff_and_exact_overlap():
+    cell = np.array([[8.0, 0, 0], [7.0, 3.0, 0], [1.0, 0.5, 7.0]])
+    center = (np.array([0.5, 0.5, 0.5]) / 4) @ cell
+    default = lj_insertion_grid(cell, [center], ["C"], gpts=(4, 4, 4))
+    explicit = lj_insertion_grid(
+        cell,
+        [center],
+        ["C"],
+        gpts=(4, 4, 4),
+        cutoff=0.5 / np.linalg.norm(np.linalg.inv(cell), axis=0).max(),
+    )
+    np.testing.assert_allclose(default.grid, explicit.grid)
+    assert np.isposinf(default.grid[0, 0, 0])

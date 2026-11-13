@@ -22,7 +22,9 @@ Single-Atom LJ Insertion
 Build an Ar insertion-energy grid, sample energy-biased positions, and export
 proposal densities with ``examples/insertion/uff_argon.py``. The default
 carbon-cage example works offline. See :doc:`insertion` for the API, units,
-UFF mixing rules, and Monte Carlo acceptance considerations.
+UFF mixing rules, and Monte Carlo acceptance considerations. The same guide
+also includes a reproducible continuous-position sampling benchmark, with
+uniform versus biased error curves and measured variance reductions.
 
 Zeolite Voxelization
 --------------------

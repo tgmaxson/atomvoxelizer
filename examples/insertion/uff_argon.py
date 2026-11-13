@@ -13,7 +13,7 @@ def main():
     parser.add_argument(
         "structure",
         nargs="?",
-        help="Optional orthorhombic periodic structure (ASE format)",
+        help="Optional periodic structure (ASE format)",
     )
     parser.add_argument("--probe", default="Ar")
     parser.add_argument("--resolution", type=float, default=0.5)
@@ -72,7 +72,7 @@ def main():
         temperature_k=args.temperature,
         probe=args.probe,
         cutoff_angstrom=(
-            min(np.linalg.norm(cell, axis=1)) / 2
+            0.5 / np.linalg.norm(np.linalg.inv(cell), axis=0).max()
             if args.cutoff is None
             else args.cutoff
         ),
