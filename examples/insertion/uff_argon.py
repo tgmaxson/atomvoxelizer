@@ -5,7 +5,13 @@ from pathlib import Path
 
 import numpy as np
 
-from atomvoxelizer import lj_insertion_grid, insertion_probabilities
+from atomvoxelizer import (
+    VoxelGrid,
+    LJParameters,
+    lj_pair_energy,
+    uff_parameters,
+    insertion_probabilities,
+)
 
 
 def main():
@@ -46,14 +52,21 @@ def main():
             .T
         )
         symbols = ["C"] * len(positions)
-    grid = lj_insertion_grid(
-        cell,
-        positions,
-        symbols,
-        probe=args.probe,
-        resolution=args.resolution,
-        cutoff=args.cutoff,
+    grid = VoxelGrid(cell, resolution=args.resolution, dtype=np.float64)
+    cutoff = (
+        0.5 / np.linalg.norm(grid.cell_inv, axis=0).max()
+        if args.cutoff is None
+        else args.cutoff
     )
+    guest = uff_parameters(args.probe)
+    for position, symbol in zip(positions, symbols):
+        host = uff_parameters(symbol)
+        pair = LJParameters(
+            np.sqrt(host.sigma * guest.sigma), np.sqrt(host.epsilon * guest.epsilon)
+        )
+        grid.add_sphere(
+            position, cutoff, mask=lambda r: lj_pair_energy(r, pair, cutoff)
+        )
     probability = insertion_probabilities(grid.grid, args.temperature)
     rng = np.random.default_rng(args.seed)
     selected = rng.choice(probability.size, size=args.samples, p=probability.ravel())

@@ -200,6 +200,41 @@ class VoxelGrid:
     def _sphere_indices(self, center, radius):
         return self._offset_indices(self._center_index(center), self._sphere_offsets(radius))
 
+    def iter_sphere_samples(self, center, radius, *, chunk_size=65536):
+        """Yield wrapped indices and actual distances inside an atom-centered sphere.
+
+        Unlike the cached constant/distance masks, this preserves the supplied
+        subvoxel center. Reciprocal-cell bounds support triclinic cells. Each
+        chunk has at most ``chunk_size`` candidates; periodic images may yield
+        repeated indices, so accumulation should use ``numpy.add.at``.
+        """
+        center = np.asarray(center, dtype=np.float64)
+        if center.shape != (3,) or not np.all(np.isfinite(center)):
+            raise ValueError("center must contain three finite coordinates")
+        if not np.isfinite(radius) or radius < 0:
+            raise ValueError("radius must be finite and non-negative")
+        if not isinstance(chunk_size, (int, np.integer)) or chunk_size <= 0:
+            raise ValueError("chunk_size must be a positive integer")
+        fractional = center @ self.cell_inv
+        translations = np.floor(fractional)
+        fractional -= translations
+        cartesian = center - translations @ self.cell
+        extent = radius * np.linalg.norm(self.cell_inv, axis=0)
+        lower = np.ceil((fractional - extent) * self.gpts - 0.5).astype(int)
+        upper = np.floor((fractional + extent) * self.gpts - 0.5).astype(int)
+        shape = upper - lower + 1
+        for start in range(0, int(np.prod(shape)), chunk_size):
+            stop = min(start + chunk_size, int(np.prod(shape)))
+            indices = (
+                np.column_stack(np.unravel_index(np.arange(start, stop), shape)) + lower
+            )
+            delta = ((indices + 0.5) / self.gpts) @ self.cell - cartesian
+            distance2 = np.sum(delta**2, axis=1)
+            inside = distance2 <= radius**2
+            if np.any(inside):
+                wrapped = indices[inside] % self.gpts
+                yield tuple(wrapped.T), np.sqrt(distance2[inside])
+
     @staticmethod
     def _validate_mask(mask):
         if mask not in {"constant", "distance"}:
@@ -224,7 +259,19 @@ class VoxelGrid:
         indices, values = self._sphere_indices_and_values(center, radius, value, mask)
         self.grid[indices] = values
 
-    def add_sphere(self, center, radius, value=1, mask="constant"):
+    def add_sphere(self, center, radius, value=1, mask="constant", *, chunk_size=65536):
+        """Add a sphere mask; use a negative value to subtract it.
+
+        The NumPy implementation also accepts ``mask(distances)`` returning a
+        scalar or one value per distance. Callable masks use actual atom-to-voxel
+        distances and bounded chunks; built-in masks retain cached stencils.
+        """
+        if callable(mask):
+            for indices, distances in self.iter_sphere_samples(
+                center, radius, chunk_size=chunk_size
+            ):
+                np.add.at(self.grid, indices, value * np.asarray(mask(distances)))
+            return
         indices, values = self._sphere_indices_and_values(center, radius, value, mask)
         np.add.at(self.grid, indices, values)
 

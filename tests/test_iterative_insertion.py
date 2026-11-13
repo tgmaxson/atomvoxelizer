@@ -267,3 +267,47 @@ def test_interacting_forward_reverse_kernel_acceptance_thresholds(forward_ratio)
             mc.grid.grid[:] = mc.field(mc.positions)
             mc.rng = PrescribedRNG(insertion, draw)
             assert mc.step() == accepted
+
+
+def test_mc_steps_do_not_create_contribution_or_candidate_grids(monkeypatch):
+    from atomvoxelizer import VoxelGrid
+
+    mc = module.ArgonMC(length=12, resolution=1, cutoff=5, activity=0.003)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError(
+            "MC updates must not construct a new VoxelGrid or rebuild a field"
+        )
+
+    with monkeypatch.context() as patch:
+        patch.setattr(VoxelGrid, "__init__", forbidden)
+        patch.setattr(mc, "field", forbidden)
+        for _ in range(200):
+            mc.step()
+    assert mc.accepts["insert"] > 5 and mc.accepts["delete"] > 5
+    assert mc.audit(200)["max_abs_ev"] < 2e-11
+
+
+def test_trial_deletion_restores_local_values_on_error(monkeypatch):
+    mc = module.ArgonMC(length=12, resolution=1, cutoff=5)
+    mc.positions = np.array([[1.5, 2.5, 3.5]])
+    mc.grid.grid[:] = mc.field(mc.positions)
+    original = mc.grid.grid.copy()
+
+    class DeleteRNG:
+        def random(self):
+            return 0.9
+
+        def integers(self, n):
+            return 0
+
+    mc.rng = DeleteRNG()
+
+    def fail(*args):
+        raise RuntimeError("proposal calculation failed")
+
+    monkeypatch.setattr(mc, "probability", fail)
+    with pytest.raises(RuntimeError, match="proposal calculation failed"):
+        mc.step()
+    np.testing.assert_array_equal(mc.grid.grid, original)
+    assert len(mc.positions) == 1

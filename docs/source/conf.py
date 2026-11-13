@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 project = "AtomVoxelizer"
 author = "AtomVoxelizer contributors"
-release = "1.3.2"
+release = "1.3.3"
 
 extensions = [
     "sphinx.ext.autodoc",

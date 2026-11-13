@@ -8,7 +8,7 @@ import numpy as np
 
 from atomvoxelizer import (
     insertion_probabilities,
-    lj_insertion_grid,
+    VoxelGrid,
     lj_pair_energy,
     uff_parameters,
 )
@@ -52,33 +52,29 @@ class ArgonMC:
         self.temperature, self.activity = temperature, activity
         self.energy_cap = energy_cap
         self.pair = uff_parameters("Ar") if pair is None else pair
-        self.parameters = {"Ar": self.pair}
         self.rng = np.random.default_rng(seed)
         self.positions = np.empty((0, 3))
-        self.grid = lj_insertion_grid(
-            self.cell,
-            self.positions,
-            [],
-            resolution=resolution,
-            cutoff=cutoff,
-            parameters=self.parameters,
-            shift=True,
-            energy_cap=energy_cap,
-        )
+        self.grid = VoxelGrid(self.cell, resolution=resolution, dtype=np.float64)
         self.attempts = {"insert": 0, "delete": 0}
         self.accepts = {"insert": 0, "delete": 0}
 
-    def field(self, positions, cutoff=None):
-        return lj_insertion_grid(
-            self.cell,
-            positions,
-            ["Ar"] * len(positions),
-            gpts=self.grid.gpts,
-            cutoff=self.cutoff if cutoff is None else cutoff,
-            parameters=self.parameters,
+    def mask(self, distances, cutoff=None):
+        """The example's radial profile; the grid only sees a callable mask."""
+        return lj_pair_energy(
+            distances,
+            self.pair,
+            self.cutoff if cutoff is None else cutoff,
             shift=True,
             energy_cap=self.energy_cap,
-        ).grid
+        )
+
+    def field(self, positions, cutoff=None):
+        """Full regeneration, used only for audits and cutoff comparisons."""
+        cutoff = self.cutoff if cutoff is None else cutoff
+        rebuilt = VoxelGrid(self.cell, gpts=self.grid.gpts, dtype=np.float64)
+        for position in positions:
+            rebuilt.add_sphere(position, cutoff, mask=lambda r: self.mask(r, cutoff))
+        return rebuilt.grid
 
     def probability(self, grid=None):
         return insertion_probabilities(
@@ -119,7 +115,7 @@ class ArgonMC:
             delta = self.interaction_energy(position, self.positions)
             log_ratio = np.log(self.activity) - np.log(n + 1) - np.log(q) - beta * delta
             if np.log(self.rng.random()) < min(0.0, log_ratio):
-                self.grid.grid += self.field(position[None, :])
+                self.grid.add_sphere(position, self.cutoff, mask=self.mask)
                 self.positions = np.vstack([self.positions, position])
                 self.accepts[move] += 1
                 return True
@@ -131,16 +127,32 @@ class ArgonMC:
             chosen = self.rng.integers(n)
             position = self.positions[chosen]
             remaining = np.delete(self.positions, chosen, axis=0)
-            removed_field = self.field(position[None, :])
-            candidate_grid = self.grid.grid - removed_field
-            # Reverse insertion is proposed in the state WITHOUT this atom.
-            q = self.density(self.probability(candidate_grid), position)
-            removed_energy = self.interaction_energy(position, remaining)
-            log_ratio = (
-                np.log(n) + np.log(q) - np.log(self.activity) + beta * removed_energy
-            )
-            if np.log(self.rng.random()) < min(0.0, log_ratio):
-                self.grid.grid -= removed_field
+            # Gather only the local values touched by this sphere before
+            # subtracting. Advanced indexing already makes a copy.
+            saved = [
+                (indices, self.grid.grid[indices])
+                for indices, _ in self.grid.iter_sphere_samples(position, self.cutoff)
+            ]
+            accepted = False
+            try:
+                self.grid.add_sphere(position, self.cutoff, value=-1, mask=self.mask)
+                # Reverse insertion is proposed WITHOUT the deleted atom.
+                q = self.density(self.probability(), position)
+                removed_energy = self.interaction_energy(position, remaining)
+                log_ratio = (
+                    np.log(n)
+                    + np.log(q)
+                    - np.log(self.activity)
+                    + beta * removed_energy
+                )
+                accepted = np.log(self.rng.random()) < min(0.0, log_ratio)
+            finally:
+                if not accepted:
+                    # Assignment restores rejected trials exactly; adding the
+                    # field back would introduce roundoff on rejected moves.
+                    for indices, values in saved:
+                        self.grid.grid[indices] = values
+            if accepted:
                 self.positions = remaining
                 self.accepts[move] += 1
                 return True

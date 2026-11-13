@@ -66,7 +66,7 @@ This is an energy-shifted LJ potential, as in the
 .. code-block:: python
 
    import numpy as np
-   from atomvoxelizer import VoxelGrid, lj_insertion_grid, lj_pair_energy, uff_parameters
+   from atomvoxelizer import VoxelGrid, lj_pair_energy, uff_parameters
 
    cell = np.eye(3) * 20
    grid = VoxelGrid(cell, resolution=0.5, dtype=np.float64)
@@ -75,12 +75,11 @@ This is an energy-shifted LJ potential, as in the
    assert lj_pair_energy(0.0, pair, 8.0, shift=True, energy_cap=10.0) == 10.0
    assert lj_pair_energy(8.0, pair, 8.0, shift=True, energy_cap=10.0) == 0.0
 
-   # Field contributed by one accepted Ar atom:
-   contribution = lj_insertion_grid(
-       cell, [position], ["Ar"], gpts=grid.gpts,
-       cutoff=8.0, shift=True, energy_cap=10.0,
-   )
-   grid.grid += contribution.grid  # Subtract this field on deletion.
+   def mask(distances):
+       return lj_pair_energy(distances, pair, 8.0, shift=True, energy_cap=10.0)
+
+   grid.add_sphere(position, 8.0, mask=mask)            # Accepted insertion
+   grid.add_sphere(position, 8.0, value=-1, mask=mask)  # Accepted deletion
 
 ``shift`` and ``energy_cap`` are optional. Their defaults retain the earlier
 unshifted, singular LJ model. The example uses the capped, shifted model for
@@ -89,10 +88,19 @@ both its grid and its actual MC energies. Calculations use float64.
 Update and Audit
 ----------------
 
-An accepted insertion adds the new atom's field; an accepted deletion subtracts
-it. Rejected moves leave the grid unchanged. Every 25 attempts, the script
-regenerates a separate field from all current positions and compares it with
-the accumulated field. The comparison never replaces the accumulated grid.
+The example defines a radial LJ mask and applies it with NumPy's
+``VoxelGrid.add_sphere``. No box-sized contribution or candidate energy grid is
+allocated for an MC move. Mask work arrays cover only the local sphere and are
+processed in bounded chunks.
+
+A deletion temporarily subtracts the local mask to evaluate its reverse proposal
+density. Only the touched voxel values are saved; a rejected trial restores
+those values by assignment, avoiding roundoff from subtracting and adding back.
+Proposal normalization still uses box-sized probability arrays.
+
+Every 25 attempts, a separate grid is rebuilt using the same ``add_sphere``
+operation for each current atom. This is the only full regeneration in the MC
+loop, and the audit never replaces the accumulated grid.
 
 .. image:: _static/argon_gcmc.png
    :alt: Ar population, incremental grid drift, shifted LJ curves, and cutoff sensitivity

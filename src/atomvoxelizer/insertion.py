@@ -131,14 +131,17 @@ def lj_insertion_grid(
     shift=False,
     energy_cap=None,
 ):
-    """Return a float64 VoxelGrid of single-atom insertion energies in eV.
+    """Convenience wrapper for adding LJ radial masks to a float64 VoxelGrid.
+
+    Examples can compose ``VoxelGrid.add_sphere(mask=callable)`` directly,
+    especially for incremental updates that do not need a new grid.
 
     Evaluate atom-centered LJ spheres at actual voxel centers without snapping
     atoms. Any nonsingular cell with row lattice vectors is supported and is
     periodic in all directions. All periodic images strictly inside ``cutoff``
     contribute, including multiple images when the sphere spans the cell.
-    The default potential is truncated and unshifted, without tail corrections. The default
-    cutoff is half the shortest perpendicular cell height. Positive infinity
+    The default potential is truncated and unshifted, without tail corrections.
+    The default cutoff is half the shortest perpendicular cell height. Positive infinity
     marks an exact atom overlap unless ``energy_cap`` is set. ``shift=True``
     subtracts the cutoff energy inside each sphere; ``energy_cap`` caps each
     pair contribution before accumulation, not the total grid energy.
@@ -200,38 +203,18 @@ def lj_insertion_grid(
             sigma, np.sqrt(host.epsilon) * np.sqrt(guest.epsilon)
         )
     grid = VoxelGrid(cell, resolution=resolution, gpts=gpts, dtype=np.float64)
-    flat = grid.grid.ravel()
-    fractional_unwrapped = positions @ inverse
-    translations = np.floor(fractional_unwrapped)
-    fractional_atoms = fractional_unwrapped - translations
-    wrapped_positions = positions - translations @ cell
-    extent = cutoff * reciprocal_norms
-    for atom, cartesian_atom, symbol in zip(
-        fractional_atoms, wrapped_positions, symbols
-    ):
+    for position, symbol in zip(positions, symbols):
         pair = pairs[symbol]
         if pair.epsilon == 0:
             continue
-        lower = np.ceil((atom - extent) * grid.gpts - 0.5).astype(int)
-        upper = np.floor((atom + extent) * grid.gpts - 0.5).astype(int)
-        shape = upper - lower + 1
-        candidates = int(np.prod(shape))
-        for start in range(0, candidates, chunk_size):
-            stop = min(start + chunk_size, candidates)
-            indices = (
-                np.column_stack(np.unravel_index(np.arange(start, stop), shape)) + lower
-            )
-            delta = ((indices + 0.5) / grid.gpts) @ cell - cartesian_atom
-            distance2 = np.sum(delta**2, axis=1)
-            active = distance2 < cutoff**2
-            indices, distance2 = indices[active], distance2[active]
-            values = lj_pair_energy(
-                np.sqrt(distance2), pair, cutoff, shift=shift, energy_cap=energy_cap
-            )
-            wrapped = np.ravel_multi_index(tuple((indices % grid.gpts).T), grid.gpts)
-            # add.at also accumulates distinct periodic images of the same atom
-            # when a cutoff sphere wraps onto the same voxel more than once.
-            np.add.at(flat, wrapped, values)
+        grid.add_sphere(
+            position,
+            cutoff,
+            mask=lambda distances: lj_pair_energy(
+                distances, pair, cutoff, shift=shift, energy_cap=energy_cap
+            ),
+            chunk_size=chunk_size,
+        )
     return grid
 
 

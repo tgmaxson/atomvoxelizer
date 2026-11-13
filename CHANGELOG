@@ -7,6 +7,20 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-11-13
+
+### Changed
+- Built the LJ examples from callable radial masks applied with NumPy's
+  existing add_sphere/add_spheres operations. Negative values subtract masks.
+- Moved exact, chunked sphere geometry into a generic iterator shared by the
+  mask primitive and the retained LJ construction wrapper.
+- Removed full contribution and candidate energy grids from iterative Ar MC;
+  rejected deletions restore saved local voxel values exactly.
+
+### Validation
+- Added generic Gaussian-mask, temporary-memory, rollback, and allocation tests.
+- Repeated the 3000-step drift audit using the primitive-based MC example.
+
 ## [1.3.2] - 2026-11-13
 
 ### Documentation

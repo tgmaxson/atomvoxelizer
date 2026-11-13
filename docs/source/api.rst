@@ -86,5 +86,8 @@ Analysis
 Insertion Energies
 ------------------
 
+The examples compose callable masks with ``VoxelGrid.add_sphere``.
+``lj_insertion_grid`` remains a convenience wrapper for existing callers.
+
 .. automodule:: atomvoxelizer.insertion
    :members: LJParameters, UFF_ELEMENTS, uff_parameters, lj_insertion_grid, lj_pair_energy, insertion_probabilities

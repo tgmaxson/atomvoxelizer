@@ -11,7 +11,13 @@ from time import perf_counter
 
 import numpy as np
 
-from atomvoxelizer import insertion_probabilities, lj_insertion_grid, uff_parameters
+from atomvoxelizer import (
+    VoxelGrid,
+    LJParameters,
+    insertion_probabilities,
+    lj_pair_energy,
+    uff_parameters,
+)
 from atomvoxelizer.insertion import BOLTZMANN_EV_K
 
 
@@ -24,6 +30,17 @@ def carbon_cage():
         .T
     )
     return cell, atoms
+
+
+def carbon_field(cell, atoms, resolution, cutoff):
+    grid = VoxelGrid(cell, resolution=resolution, dtype=np.float64)
+    host, guest = uff_parameters("C"), uff_parameters("Ar")
+    pair = LJParameters(
+        np.sqrt(host.sigma * guest.sigma), np.sqrt(host.epsilon * guest.epsilon)
+    )
+    for atom in atoms:
+        grid.add_sphere(atom, cutoff, mask=lambda r: lj_pair_energy(r, pair, cutoff))
+    return grid
 
 
 def direct_energy(points, cell, atoms, cutoff):
@@ -100,16 +117,12 @@ def run_benchmark(
     )
     references = []
     for resolution in reference_resolutions:
-        grid = lj_insertion_grid(
-            cell, atoms, ["C"] * len(atoms), resolution=resolution, cutoff=cutoff
-        )
+        grid = carbon_field(cell, atoms, resolution, cutoff)
         references.append((resolution, grid.grid))
     grids = []
     for resolution in resolutions:
         start = perf_counter()
-        grid = lj_insertion_grid(
-            cell, atoms, ["C"] * len(atoms), resolution=resolution, cutoff=cutoff
-        )
+        grid = carbon_field(cell, atoms, resolution, cutoff)
         grids.append((resolution, grid, perf_counter() - start))
     streams = iter(
         np.random.SeedSequence(seed).spawn(len(temperatures) * (len(grids) + 1))

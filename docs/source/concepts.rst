@@ -62,6 +62,20 @@ Two scalar mask types are available:
    Every voxel receives its real-space distance from the sphere center. The
    distance is in Angstrom when the cell is in Angstrom.
 
+NumPy's ``add_sphere`` also accepts a radial function. For example:
+
+.. code-block:: python
+
+   grid = VoxelGrid(cell, resolution=0.25, dtype=np.float64)
+   gaussian = lambda r: np.exp(-(r / 2.0)**2)
+   grid.add_sphere(position, radius=6.0, mask=gaussian)
+   grid.add_sphere(position, radius=6.0, value=-1, mask=gaussian)
+
+Callable masks use actual atom-to-voxel distances, including subvoxel positions,
+and process the local sphere in bounded chunks. Built-in masks retain their
+cached placement convention. See the advanced :doc:`insertion` and
+:doc:`argon_mc` examples for LJ profiles composed with this operation.
+
 Grid Values And Dtypes
 ----------------------
 

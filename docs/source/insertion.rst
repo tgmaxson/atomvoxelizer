@@ -130,8 +130,8 @@ Reproduce the comparison with:
 The :download:`raw results <_static/insertion_sampling.json>` include estimates,
 errors, timings, and reference-refinement values.
 
-Using the API
--------------
+Building a Radial Mask
+----------------------
 
 This constructs the same cage and draws one continuous insertion proposal:
 
@@ -139,13 +139,17 @@ This constructs the same cage and draws one continuous insertion proposal:
 
    from itertools import product
    import numpy as np
-   from atomvoxelizer import lj_insertion_grid, insertion_probabilities
+   from atomvoxelizer import VoxelGrid, LJParameters, lj_pair_energy
+   from atomvoxelizer import uff_parameters, insertion_probabilities
 
    cell = np.eye(3) * 16
    positions = np.array(list(product([4., 12.], repeat=3)))
-   energy = lj_insertion_grid(
-       cell, positions, ["C"] * 8, probe="Ar", resolution=0.5, cutoff=8.0,
-   )
+   host, probe = uff_parameters("C"), uff_parameters("Ar")
+   pair = LJParameters(np.sqrt(host.sigma * probe.sigma),
+                       np.sqrt(host.epsilon * probe.epsilon))
+   mask = lambda r: lj_pair_energy(r, pair, cutoff=8.0)
+   energy = VoxelGrid(cell, resolution=0.5, dtype=np.float64)
+   energy.add_spheres(positions, np.full(len(positions), 8.0), mask=mask)
    probability = (
        0.95 * insertion_probabilities(energy.grid, 298.15, uniform_fraction=0)
        + 0.05 / energy.grid.size
@@ -189,22 +193,19 @@ Parameters follow Table I of `Rappe et al. (1992)
 `RDKit UFF table
 <https://github.com/rdkit/rdkit/blob/master/Code/ForceField/UFF/Params.cpp>`_.
 The API converts the tabulated minimum separation to sigma = x / 2**(1/6)
-and well depth from kcal/mol to eV. ``mixing="lorentz-berthelot"`` selects
-arithmetic sigma mixing instead of UFF's geometric mean.
+and well depth from kcal/mol to eV. Mix sigma geometrically for UFF or
+arithmetically for Lorentz-Berthelot; both use a geometric epsilon mean.
 
 Pass element symbols from ``UFF_ELEMENTS``; unknown symbols raise an error.
-Only the LJ term is included. Custom parameters replace the bundled lookup:
+Only the LJ term is included. For custom parameters, replace ``pair`` in the
+mask with an ``LJParameters(sigma, epsilon)`` instance. The grid only receives a
+radial callable; Gaussian, inverse-distance, or other profiles use the same
+operation. A negative ``value`` subtracts a mask at a given position.
 
-.. code-block:: python
-
-   from atomvoxelizer import LJParameters
-
-   parameters = {"host": LJParameters(3.0, 0.01),
-                 "guest": LJParameters(3.4, 0.012)}
-   energy = lj_insertion_grid(
-       cell, positions, ["host"] * 8, probe="guest",
-       resolution=0.5, cutoff=8, parameters=parameters,
-   )
+Callable masks currently use the NumPy backend. The built-in ``constant`` and
+``distance`` masks retain their existing cached-stencil behavior. Callable
+masks evaluate actual subvoxel distances in bounded chunks, and
+``iter_sphere_samples`` exposes the same indices and distances when needed.
 
 Periodic Cells
 --------------
