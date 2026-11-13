@@ -274,10 +274,10 @@ Run the offline carbon-cage example, including an energy/probability plot:
 python examples/insertion/uff_argon.py --plot argon_insertion.png
 ```
 
-The NPZ output includes continuous insertion proposals and their probability
-densities for use in Monte Carlo acceptance corrections. The implementation
-uses actual voxel-center distances, energies in eV, distances in Angstrom,
-geometric UFF mixing, and truncated atom-centered LJ spheres in fully periodic
-cells, including skew cells. All periodic images within the cutoff contribute. A 5% uniform proposal component retains support over finite
-voxels. See the [insertion guide](https://atomvoxelizer.readthedocs.io/en/latest/insertion.html)
-for custom parameters, supported elements, cutoff limits, and acceptance rules.
+The output contains energies, sampled positions, and proposal densities for
+Monte Carlo acceptance corrections. Orthogonal and triclinic periodic cells
+are supported. In the carbon-cage benchmark, a 0.25 Angstrom bias reduced
+insertion-estimator variance by 14x at 298 K and 22x at 77 K. Reusing the grid
+can save energy evaluations; setup costs and gains with other potentials need
+separate assessment. See the [insertion guide](https://atomvoxelizer.readthedocs.io/en/latest/insertion.html)
+for parameters, measured results, and sampling corrections.

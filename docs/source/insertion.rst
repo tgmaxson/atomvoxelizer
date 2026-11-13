@@ -1,96 +1,122 @@
 Single-Atom Insertion Bias
 ==========================
 
-Version 1.1 introduced a NumPy reference implementation of a single-site
-Lennard-Jones insertion field. Version 1.2 supports triclinic cells using
-atom-centered LJ spheres. It can help propose low-energy positions for
-energy-biased Monte Carlo in a fixed host. It needs no additional dependencies
-for grid construction or sampling.
+An LJ insertion grid concentrates proposals near favorable sites in a fixed
+host. In the carbon-cage example below, a 0.25 Angstrom grid reduced the
+variance of a Widom insertion estimate by **14x at 298 K and 22x at 77 K**
+compared with uniform sampling.
 
-Quick Example
--------------
+The bias is useful when many insertions share the same host: the grid is built
+once and reused. Finer grids gave larger gains in this test; a 1 Angstrom grid
+provided little benefit. These are savings in energy evaluations, before grid
+setup and sampling costs. The test uses UFF for both the bias and the target
+energy; gains with another potential or in interacting-guest GCMC remain
+unmeasured.
 
-.. code-block:: python
+Carbon-Cage Example
+-------------------
 
-   import numpy as np
-   from atomvoxelizer import lj_insertion_grid, insertion_probabilities
-
-   energy = lj_insertion_grid(
-       np.eye(3) * 20, [[10.1, 10.2, 10.3]], ["Si"], probe="Ar",
-       resolution=0.5, cutoff=8.0,
-   )
-   probability = insertion_probabilities(energy.grid, temperature=298.15)
-   rng = np.random.default_rng(42)
-   flat_index = rng.choice(probability.size, p=probability.ravel())
-   index = np.array(np.unravel_index(flat_index, energy.grid.shape))
-   position = ((index + rng.random(3)) / energy.gpts) @ energy.cell
-   voxel_volume = abs(np.linalg.det(energy.cell)) / probability.size
-   proposal_density = probability.ravel()[flat_index] / voxel_volume
-
-The example ``examples/insertion/uff_argon.py`` runs offline using an eight-site
-carbon cage. It writes an NPZ archive containing ``energy_ev``, ``probability``,
-``cell``, ``gpts``, ``temperature_k``, ``probe``, ``cutoff_angstrom``,
-``uniform_fraction``, ``samples_angstrom``, and
-``proposal_density_per_angstrom3``. For example:
+Run from the repository root:
 
 .. code-block:: bash
 
    python examples/insertion/uff_argon.py --resolution 0.5 --samples 1000 \
        --output argon_insertion.npz --plot argon_insertion.png
 
-.. image:: _static/argon_insertion.png
-   :alt: Argon insertion energy and voxel proposal probability in a carbon cage
-   :width: 95%
-
-To use an existing fully periodic structure, install
-``AtomVoxelizer[examples]`` and pass its path as the positional argument:
+The script writes insertion energies, voxel probabilities, sampled positions,
+and their proposal densities to an NPZ file. It runs offline. To use a periodic
+structure file, install ``AtomVoxelizer[examples]`` and pass its path:
 
 .. code-block:: bash
 
    python examples/insertion/uff_argon.py framework.cif --probe Ar --cutoff 8
 
-Sampling Efficiency: A Reproducible Experiment
------------------------------------------------
+.. image:: _static/argon_insertion.png
+   :alt: Argon insertion energies and proposal probabilities in a carbon cage
+   :width: 95%
 
-Does the bias actually save energy evaluations? The offline benchmark
-``benchmarks/benchmark_insertion_sampling.py`` compares uniform insertion with
-three grid resolutions in the same eight-carbon cage shown above. It estimates
-the dimensionless single-particle insertion factor
+.. list-table:: Example and benchmark settings
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Parameter
+     - Value
+   * - Host
+     - Eight C atoms at all combinations of x, y, z = 4 or 12 Angstrom
+   * - Cell
+     - 16 x 16 x 16 Angstrom, fully periodic
+   * - Probe
+     - Single Ar atom
+   * - Potential
+     - UFF LJ; geometric mixing of sigma and epsilon
+   * - Cutoff
+     - 8 Angstrom; unshifted, no tail correction
+   * - Example defaults
+     - 0.5 Angstrom grid; 298.15 K; 1000 proposals; seed 42
+   * - Benchmark grids
+     - 1, 0.5, 0.25 Angstrom
+   * - Benchmark temperatures
+     - 298.15 and 77 K
+   * - Sampling budgets
+     - 256, 1024, 4096 energy evaluations per repeat; 64 repeats
+   * - Benchmark proposal
+     - 95% grid Boltzmann bias + 5% uniform over the entire cell
+   * - Reference integration
+     - Midpoint quadrature at 0.25 and 0.125 Angstrom
+   * - Benchmark seed
+     - 20261113
+
+Sampling Results
+----------------
+
+The benchmark estimates the single-particle insertion factor
 
 .. math::
 
    Q = \frac{1}{V} \int_V e^{-E(\mathbf{r})/(k_B T)}\,d\mathbf{r}.
 
-This is the configurational factor used in a Widom insertion calculation for a
-fixed host and a single-site probe. Its excess chemical potential is
-``-k_B T log(Q)``. The benchmark reports Q, avoiding the finite-sample bias
-introduced by taking a logarithm of a noisy estimate.
+It samples continuous positions within voxels, evaluates their actual Ar-C
+energies, and corrects each contribution by its proposal density. Both methods
+therefore estimate the same Q; the voxel energy only determines where to sample.
 
-For uniform proposals each contribution is simply ``exp(-E / (k_B T))``.
-For biased proposals it is ``exp(-E / (k_B T)) / (V * q(position))``.
-Both estimators target the same integral. Omitting this density correction
-changes the answer even if the sampled positions look more favorable.
+.. list-table:: Variance reduction at 4096 energy evaluations per repeat
+   :header-rows: 1
+   :widths: 40 30 30
 
-The benchmark samples a voxel, jitters uniformly inside it, and recomputes the
-continuous Ar-C LJ energy at that position. Thus the grid is an approximate
-proposal, rather than the energy model used for the final evaluation. A 5%
-uniform component covers the **entire cell**, including voxels whose centers
-have infinite energy. This differs from the finite-voxel uniform component in
-``insertion_probabilities`` and preserves support for this continuous integral:
+   * - Proposal
+     - 298.15 K
+     - 77 K
+   * - Uniform
+     - 1.00x
+     - 1.00x
+   * - Grid, 1 Angstrom
+     - 1.40x
+     - 1.72x
+   * - Grid, 0.5 Angstrom
+     - 8.55x
+     - 5.26x
+   * - Grid, 0.25 Angstrom
+     - 14.35x
+     - 21.93x
 
-.. code-block:: python
+Variance reduction is the ratio of uniform to biased variance across repeats.
+A 14x reduction implies roughly 14 times fewer independent energy evaluations
+for the same uncertainty. The ratios are estimates from 64 repeats.
 
-   probability = (
-       0.95 * insertion_probabilities(energy.grid, temperature, uniform_fraction=0)
-       + 0.05 / energy.grid.size
-   )
-   # After selecting and jittering within a voxel:
-   q = probability[tuple(index)] / voxel_volume
-   contribution = np.exp(-actual_energy_ev / (8.617333262145e-5 * temperature)) / (
-       abs(np.linalg.det(energy.cell)) * q
-   )
+.. image:: _static/insertion_sampling.png
+   :alt: Insertion-factor error versus energy evaluations for uniform and grid-biased sampling
+   :width: 100%
 
-Reproduce the published figure and raw results from the repository root:
+At 77 K, uniform sampling gave Q = 1.86840 +/- 0.00273 and the 0.25 Angstrom
+bias gave 1.86560 +/- 0.00058, against a quadrature reference of 1.86567.
+Uncertainties are standard errors over 64 repeats. Reference refinement changed
+Q by 0.000018 at 298 K and 0.000184 at 77 K, below the Monte Carlo uncertainties.
+
+The finest bias took 0.32 seconds to build in this run. Reuse can amortize this
+cost; rebuilding after every host change may erase the benefit. These variance
+reductions do not establish wall-clock speedups or GCMC acceptance rates.
+
+Reproduce the comparison with:
 
 .. code-block:: bash
 
@@ -100,102 +126,73 @@ Reproduce the published figure and raw results from the repository root:
        --reference-resolutions 0.25 0.125 \
        --output insertion_sampling.json --plot insertion_sampling.png
 
-The run uses geometric UFF mixing, an unshifted 8 Angstrom cutoff, and 64
-independent repeats per method. At 4096 continuous energy evaluations per
-repeat, the observed variance reductions and favorable-site fractions were:
+The :download:`raw results <_static/insertion_sampling.json>` include estimates,
+errors, timings, and reference-refinement values.
 
-.. list-table:: Equal energy-evaluation budgets; favorable means E < -0.008 eV
-   :header-rows: 1
-   :widths: 24 19 19 19 19
+Using the API
+-------------
 
-   * - Proposal
-     - Variance gain, 298 K
-     - Variance gain, 77 K
-     - Favorable, 298 K
-     - Favorable, 77 K
-   * - Uniform
-     - 1.00x
-     - 1.00x
-     - 14.24%
-     - 14.31%
-   * - Grid, 1 Angstrom
-     - 1.40x
-     - 1.72x
-     - 21.05%
-     - 26.26%
-   * - Grid, 0.5 Angstrom
-     - 8.55x
-     - 5.26x
-     - 21.49%
-     - 28.98%
-   * - Grid, 0.25 Angstrom
-     - 14.35x
-     - 21.93x
-     - 21.60%
-     - 29.50%
+This constructs the same cage and draws one continuous insertion proposal:
 
-Variance gain is the uniform estimator's empirical variance across repeats
-divided by the biased estimator's variance. A gain of 14 means approximately
-14 times fewer energy evaluations for the same variance in this experiment,
-when the independent-sample variance follows its usual 1/N scaling. These
-finite-repeat ratios themselves have sampling uncertainty.
+.. code-block:: python
 
-.. image:: _static/insertion_sampling.png
-   :alt: Continuous insertion-factor RMSE versus energy-evaluation budget for uniform and three UFF grid resolutions at 298 and 77 Kelvin
-   :width: 100%
+   from itertools import product
+   import numpy as np
+   from atomvoxelizer import lj_insertion_grid, insertion_probabilities
 
-The figure shows error against midpoint quadrature on a separate 0.125 Angstrom
-grid. Refining that reference from 0.25 to 0.125 Angstrom changed Q by
-0.000018 at 298 K and 0.000184 at 77 K. These changes are smaller than the
-reported Monte Carlo uncertainties; the reference still has discretization
-error, and two resolutions do not provide a rigorous error bound.
+   cell = np.eye(3) * 16
+   positions = np.array(list(product([4., 12.], repeat=3)))
+   energy = lj_insertion_grid(
+       cell, positions, ["C"] * 8, probe="Ar", resolution=0.5, cutoff=8.0,
+   )
+   probability = (
+       0.95 * insertion_probabilities(energy.grid, 298.15, uniform_fraction=0)
+       + 0.05 / energy.grid.size
+   )
+   rng = np.random.default_rng(42)
+   selected = rng.choice(probability.size, p=probability.ravel())
+   index = np.array(np.unravel_index(selected, energy.grid.shape))
+   position = ((index + rng.random(3)) / energy.gpts) @ cell
+   voxel_volume = abs(np.linalg.det(cell)) / probability.size
+   q = probability[tuple(index)] / voxel_volume
 
-.. list-table:: Corrected Q estimates at 4096 evaluations; uncertainty is one standard error of the mean over 64 repeats
+For an insertion-factor estimate, evaluate the simulation energy at ``position``
+and use ``exp(-E / (k_B T)) / (V * q)``. For Monte Carlo moves, include forward
+and reverse proposal densities in the acceptance ratio. A biased proposal alone
+does not sample the equilibrium distribution.
+
+The explicit uniform term above gives every voxel nonzero probability.
+``insertion_probabilities`` defaults to a 5% uniform component over finite-energy
+voxels only; exact-overlap voxels remain excluded. The benchmark uses full-cell
+support because positions away from an infinite-energy voxel center can still
+have finite energy.
+
+LJ Parameters
+-------------
+
+.. list-table:: UFF values used in the example
    :header-rows: 1
 
-   * - Temperature
-     - Uniform
-     - 0.25 Angstrom bias
-     - Reference quadrature
-   * - 298.15 K
-     - 0.92347 +/- 0.00106
-     - 0.92441 +/- 0.00028
-     - 0.92395
-   * - 77 K
-     - 1.86840 +/- 0.00273
-     - 1.86560 +/- 0.00058
-     - 1.86567
+   * - Element
+     - Sigma (Angstrom)
+     - Epsilon (eV)
+   * - C
+     - 3.430851
+     - 0.00455323
+   * - Ar
+     - 3.445996
+     - 0.00802236
 
-The :download:`raw results <_static/insertion_sampling.json>` record every
-sample budget, repeat standard deviation, reference refinement, seed, NumPy
-version, grid construction time, and sampling/energy-evaluation time. In this
-run the 0.25 Angstrom grid cost about 0.32 seconds to construct; that setup cost
-must be amortized over insertions in a fixed host. Timing depends on hardware
-and batching, so the variance gains are **energy-evaluation efficiency**, not
-claims of equal wall-clock speedups. Coarse grids perform worse here, and a
-changed host requires rebuilding the bias. This toy UFF-host result does not
-establish GCMC acceptance rates or gains for a different simulation potential.
-
-Parameters and Conventions
---------------------------
-
-The bundled subset contains H, He, Li, B, C, N, O, F, Ne, Na, Mg, Al, Si, P, S,
-Cl, Ar, K, Ca, Ti, Fe, Co, Ni, Cu, Zn, Br, Kr, Zr, Ag, I, and Xe. Pass element
-symbols, rather than UFF coordination labels. Only the van der Waals parameters
-are used; no bonding, charges, electrostatics, or automatic atom typing is
-included. Unknown symbols raise an error.
-
-Values follow Table I of `Rappe et al. (1992)
-<https://doi.org/10.1021/ja00051a040>`_ and were checked against the
-`RDKit UFF parameter table
+Parameters follow Table I of `Rappe et al. (1992)
+<https://doi.org/10.1021/ja00051a040>`_, checked against the
+`RDKit UFF table
 <https://github.com/rdkit/rdkit/blob/master/Code/ForceField/UFF/Params.cpp>`_.
-UFF tabulates the minimum separation x and a well depth in kcal/mol. The API
-returns sigma = x / 2**(1/6) in Angstrom and epsilon in eV for
-``4 epsilon [(sigma/r)^12 - (sigma/r)^6]``. The default geometric means of both
-sigma and epsilon match UFF. ``mixing="lorentz-berthelot"`` selects an arithmetic
-sigma mean and a geometric epsilon mean instead.
+The API converts the tabulated minimum separation to sigma = x / 2**(1/6)
+and well depth from kcal/mol to eV. ``mixing="lorentz-berthelot"`` selects
+arithmetic sigma mixing instead of UFF's geometric mean.
 
-A custom mapping replaces the bundled lookup:
+Pass element symbols from ``UFF_ELEMENTS``; unknown symbols raise an error.
+Only the LJ term is included. Custom parameters replace the bundled lookup:
 
 .. code-block:: python
 
@@ -204,58 +201,19 @@ A custom mapping replaces the bundled lookup:
    parameters = {"host": LJParameters(3.0, 0.01),
                  "guest": LJParameters(3.4, 0.012)}
    energy = lj_insertion_grid(
-       np.eye(3) * 20, [[10, 10, 10]], ["host"], probe="guest",
-       gpts=(40, 40, 40), cutoff=8, parameters=parameters,
+       cell, positions, ["host"] * 8, probe="guest",
+       resolution=0.5, cutoff=8, parameters=parameters,
    )
 
-Geometry and Sampling Limits
-----------------------------
+Periodic Cells
+--------------
 
-The implementation supports any nonsingular cell with full periodicity,
-including triclinic cells. Each atom contributes a spherical LJ field to the
-voxels inside its cutoff. Distances use actual Cartesian voxel-center and atom
-positions, without snapping atoms to voxel centers.
+Orthogonal and triclinic cells are supported with full periodicity. Each atom
+contributes an LJ sphere evaluated at actual voxel-center distances. All images
+inside the cutoff are summed, including multiple images of an atom when the
+cutoff spans the cell.
 
-Sphere bounds use reciprocal cell vectors: the fractional radius along axis i
-is ``cutoff * norm(inv(cell)[:, i])``. Bounds based only on cell-vector lengths
-can miss voxels in skew cells. Candidate voxel indices extend beyond the cell,
-then wrap periodically when accumulating energies. Thus a large sphere can
-contribute multiple distinct periodic images to the same voxel; these are
-physical image contributions, each counted once. This avoids assuming that
-rounding each fractional displacement finds the nearest image in a skew cell.
-
-For example, an explicitly skew cell can be used directly:
-
-.. code-block:: python
-
-   cell = np.array([[20., 0., 0.], [6., 18., 0.], [2., 3., 20.]])
-   positions = np.array([[0.2, 0.3, 0.4]]) @ cell
-   energy = lj_insertion_grid(
-       cell, positions, ["Si"], probe="Ar", resolution=0.5, cutoff=10.0,
-   )
-
-The potential is truncated and unshifted at the cutoff, with no tail correction.
-The default cutoff is half the shortest perpendicular cell height; an explicit
-larger cutoff is allowed and sums all periodic images inside that sphere. This
-reproduces the earlier minimum-image result for orthogonal cells at cutoffs no
-greater than half the shortest vector. All calculations use float64. Work arrays
-are chunked and only each atom's fractional sphere bounding box is visited;
-very skew cells and large cutoffs increase the candidate count.
-
-``insertion_probabilities`` shifts energies by their finite minimum before
-exponentiation, normalizes them, and mixes in a 5% uniform component over finite
-voxels by default. This preserves proposal support when Boltzmann weights
-underflow. Exact overlaps have infinite energy and their entire voxel is
-excluded from this proposal; treat those voxels as hard exclusions or combine
-with a separate full-cell uniform proposal if the target distribution includes
-them. Setting ``uniform_fraction=0`` gives pure normalized Boltzmann weights.
-
-Uniform jitter within the chosen voxel produces a piecewise constant continuous
-proposal with density q(r) = p(voxel) / voxel_volume. The voxel-center energy is
-an approximation for proposing positions. Evaluate the actual simulation energy
-at the sampled position and include the forward and reverse proposal densities
-in the Metropolis-Hastings or grand-canonical acceptance ratio. These samples
-alone are not an equilibrium trajectory or a complete GCMC algorithm. Rebuild
-the field when the host changes; guest-guest interactions require the simulation
-energy model. UFF is a generic bias model here, rather than a validated
-adsorption potential for a particular host/guest pair.
+The default cutoff is half the shortest perpendicular cell height. Larger
+explicit cutoffs are allowed. Sphere bounds use reciprocal cell vectors so
+skew cells retain all contributing voxels. Calculations use float64 with
+chunked work arrays; larger cutoffs and stronger skew increase the cost.
