@@ -87,4 +87,4 @@ Insertion Energies
 ------------------
 
 .. automodule:: atomvoxelizer.insertion
-   :members: LJParameters, UFF_ELEMENTS, uff_parameters, lj_insertion_grid, insertion_probabilities
+   :members: LJParameters, UFF_ELEMENTS, uff_parameters, lj_insertion_grid, lj_pair_energy, insertion_probabilities

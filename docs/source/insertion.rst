@@ -11,7 +11,8 @@ once and reused. Finer grids gave larger gains in this test; a 1 Angstrom grid
 provided little benefit. These are savings in energy evaluations, before grid
 setup and sampling costs. The test uses UFF for both the bias and the target
 energy; gains with another potential or in interacting-guest GCMC remain
-unmeasured.
+unmeasured. See :doc:`argon_mc` for an empty-box Ar MC example that checks
+incremental grid updates against full regeneration.
 
 Carbon-Cage Example
 -------------------

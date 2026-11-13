@@ -12,6 +12,7 @@ from .insertion import (
     UFF_ELEMENTS,
     uff_parameters,
     lj_insertion_grid,
+    lj_pair_energy,
     insertion_probabilities,
 )
 from .analysis import ProbeAccessibleResult, VoxelGridAnalysis, VoxelRegion
@@ -21,6 +22,7 @@ __all__ = [
     "UFF_ELEMENTS",
     "uff_parameters",
     "lj_insertion_grid",
+    "lj_pair_energy",
     "insertion_probabilities",
     "VoxelGrid",
     "VoxelGridAnalysis",

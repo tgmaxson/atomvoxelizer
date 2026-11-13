@@ -17,12 +17,19 @@ For development from source:
    pip install -e ".[dev,examples]"
 
 Single-Atom LJ Insertion
--------------------------
+------------------------
 
 ``examples/insertion/uff_argon.py`` builds an Ar insertion grid in a carbon cage
 and exports sampled positions with their proposal densities. See :doc:`insertion`
 for settings, usage, and a sampling comparison: the finest grid reduced
 insertion-estimator variance by 14x at 298 K and 22x at 77 K in this fixed host.
+
+Iterative Ar Monte Carlo
+------------------------
+
+``examples/insertion/argon_gcmc.py`` starts with an empty box and adds or
+subtracts pair fields after accepted MC moves. See :doc:`argon_mc` for grid
+drift over 3000 attempts, a finite-core potential, and cutoff comparisons.
 
 Zeolite Voxelization
 --------------------

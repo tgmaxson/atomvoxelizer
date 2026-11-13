@@ -1,0 +1,1148 @@
+{
+  "parameters": {
+    "steps": 3000,
+    "audit_every": 25,
+    "length": 20.0,
+    "resolution": 0.5,
+    "cutoff": 8.0,
+    "compare_cutoffs": [
+      4.0,
+      6.0,
+      8.0,
+      10.0
+    ],
+    "temperature": 150.0,
+    "activity": 0.001,
+    "energy_cap": 10.0,
+    "seed": 42
+  },
+  "attempts": {
+    "insert": 1500,
+    "delete": 1500
+  },
+  "accepts": {
+    "insert": 1318,
+    "delete": 1309
+  },
+  "drift": [
+    {
+      "step": 0,
+      "atoms": 0,
+      "updates": 0,
+      "max_abs_ev": 0.0,
+      "rms_ev": 0.0,
+      "low_energy_rms_ev": 0.0,
+      "probability_l1": 0.0
+    },
+    {
+      "step": 25,
+      "atoms": 6,
+      "updates": 20,
+      "max_abs_ev": 3.552713678800501e-15,
+      "rms_ev": 1.2800032440453483e-16,
+      "low_energy_rms_ev": 9.661173473671278e-17,
+      "probability_l1": 1.125796042997782e-15
+    },
+    {
+      "step": 50,
+      "atoms": 6,
+      "updates": 42,
+      "max_abs_ev": 5.662137425588298e-15,
+      "rms_ev": 2.586462937564732e-16,
+      "low_energy_rms_ev": 2.34413496146295e-16,
+      "probability_l1": 3.91621945630146e-15
+    },
+    {
+      "step": 75,
+      "atoms": 12,
+      "updates": 64,
+      "max_abs_ev": 5.662137425588298e-15,
+      "rms_ev": 3.4752845368987143e-16,
+      "low_energy_rms_ev": 3.055027310132698e-16,
+      "probability_l1": 7.037193453864629e-15
+    },
+    {
+      "step": 100,
+      "atoms": 11,
+      "updates": 87,
+      "max_abs_ev": 5.662137425588298e-15,
+      "rms_ev": 4.3652343502748087e-16,
+      "low_energy_rms_ev": 3.81108890165846e-16,
+      "probability_l1": 1.0888232136688095e-14
+    },
+    {
+      "step": 125,
+      "atoms": 6,
+      "updates": 110,
+      "max_abs_ev": 5.661703744719304e-15,
+      "rms_ev": 4.933979352226234e-16,
+      "low_energy_rms_ev": 4.679487310351221e-16,
+      "probability_l1": 1.4364224535741617e-14
+    },
+    {
+      "step": 150,
+      "atoms": 7,
+      "updates": 133,
+      "max_abs_ev": 5.661893480099489e-15,
+      "rms_ev": 5.233421327853086e-16,
+      "low_energy_rms_ev": 5.055799568426674e-16,
+      "probability_l1": 1.653904092012334e-14
+    },
+    {
+      "step": 175,
+      "atoms": 16,
+      "updates": 156,
+      "max_abs_ev": 5.66127006385031e-15,
+      "rms_ev": 5.705644413015129e-16,
+      "low_energy_rms_ev": 5.638356049883963e-16,
+      "probability_l1": 1.794553754085233e-14
+    },
+    {
+      "step": 200,
+      "atoms": 10,
+      "updates": 176,
+      "max_abs_ev": 5.660294281895073e-15,
+      "rms_ev": 6.351860949036453e-16,
+      "low_energy_rms_ev": 6.086041538116106e-16,
+      "probability_l1": 2.181941424363702e-14
+    },
+    {
+      "step": 225,
+      "atoms": 12,
+      "updates": 194,
+      "max_abs_ev": 7.105427357601002e-15,
+      "rms_ev": 6.800337632160034e-16,
+      "low_energy_rms_ev": 6.348785737631263e-16,
+      "probability_l1": 2.4104292924514666e-14
+    },
+    {
+      "step": 250,
+      "atoms": 8,
+      "updates": 218,
+      "max_abs_ev": 7.105427357601002e-15,
+      "rms_ev": 7.231586835260335e-16,
+      "low_energy_rms_ev": 6.934857023769542e-16,
+      "probability_l1": 2.701705288287381e-14
+    },
+    {
+      "step": 275,
+      "atoms": 12,
+      "updates": 238,
+      "max_abs_ev": 7.105427357601002e-15,
+      "rms_ev": 7.495003665273926e-16,
+      "low_energy_rms_ev": 7.285103861588765e-16,
+      "probability_l1": 3.015985502536684e-14
+    },
+    {
+      "step": 300,
+      "atoms": 11,
+      "updates": 257,
+      "max_abs_ev": 9.176036666613818e-15,
+      "rms_ev": 7.898507213127287e-16,
+      "low_energy_rms_ev": 7.657471261614881e-16,
+      "probability_l1": 3.1756970693403016e-14
+    },
+    {
+      "step": 325,
+      "atoms": 7,
+      "updates": 279,
+      "max_abs_ev": 7.105427357601002e-15,
+      "rms_ev": 8.135896708330124e-16,
+      "low_energy_rms_ev": 7.978794003338337e-16,
+      "probability_l1": 3.4708543501350364e-14
+    },
+    {
+      "step": 350,
+      "atoms": 8,
+      "updates": 302,
+      "max_abs_ev": 7.81219164878999e-15,
+      "rms_ev": 8.364471432623328e-16,
+      "low_energy_rms_ev": 8.361571630911411e-16,
+      "probability_l1": 3.662091964427779e-14
+    },
+    {
+      "step": 375,
+      "atoms": 7,
+      "updates": 327,
+      "max_abs_ev": 7.8124355942788e-15,
+      "rms_ev": 8.646794530092792e-16,
+      "low_energy_rms_ev": 8.562528610425174e-16,
+      "probability_l1": 3.854115254718659e-14
+    },
+    {
+      "step": 400,
+      "atoms": 3,
+      "updates": 347,
+      "max_abs_ev": 7.812218753844302e-15,
+      "rms_ev": 8.865972227432662e-16,
+      "low_energy_rms_ev": 8.869226234937773e-16,
+      "probability_l1": 4.0484154330992295e-14
+    },
+    {
+      "step": 425,
+      "atoms": 2,
+      "updates": 364,
+      "max_abs_ev": 7.812218753844302e-15,
+      "rms_ev": 8.972667747315795e-16,
+      "low_energy_rms_ev": 8.942863102095935e-16,
+      "probability_l1": 4.1535933352806326e-14
+    },
+    {
+      "step": 450,
+      "atoms": 10,
+      "updates": 386,
+      "max_abs_ev": 7.811459812323562e-15,
+      "rms_ev": 9.178531819342131e-16,
+      "low_energy_rms_ev": 9.108773057263638e-16,
+      "probability_l1": 4.236870787682214e-14
+    },
+    {
+      "step": 475,
+      "atoms": 4,
+      "updates": 406,
+      "max_abs_ev": 8.691831976381792e-15,
+      "rms_ev": 9.475342544473833e-16,
+      "low_energy_rms_ev": 9.386581911088772e-16,
+      "probability_l1": 4.382276518578122e-14
+    },
+    {
+      "step": 500,
+      "atoms": 8,
+      "updates": 428,
+      "max_abs_ev": 8.694434061595757e-15,
+      "rms_ev": 9.682691559146813e-16,
+      "low_energy_rms_ev": 9.715036781625164e-16,
+      "probability_l1": 4.599621223552459e-14
+    },
+    {
+      "step": 525,
+      "atoms": 8,
+      "updates": 450,
+      "max_abs_ev": 8.694190116106948e-15,
+      "rms_ev": 9.867259493577596e-16,
+      "low_energy_rms_ev": 9.717283767281036e-16,
+      "probability_l1": 4.6236145964537395e-14
+    },
+    {
+      "step": 550,
+      "atoms": 7,
+      "updates": 473,
+      "max_abs_ev": 8.694434061595757e-15,
+      "rms_ev": 1.010622224994744e-15,
+      "low_energy_rms_ev": 9.870617999903258e-16,
+      "probability_l1": 4.819948437413197e-14
+    },
+    {
+      "step": 575,
+      "atoms": 6,
+      "updates": 494,
+      "max_abs_ev": 8.69549115871393e-15,
+      "rms_ev": 1.0275162645871598e-15,
+      "low_energy_rms_ev": 1.0213512392779226e-15,
+      "probability_l1": 4.9084348353909486e-14
+    },
+    {
+      "step": 600,
+      "atoms": 8,
+      "updates": 514,
+      "max_abs_ev": 8.695518263768243e-15,
+      "rms_ev": 1.0462901361632987e-15,
+      "low_energy_rms_ev": 1.0426077629535818e-15,
+      "probability_l1": 5.041235646652617e-14
+    },
+    {
+      "step": 625,
+      "atoms": 6,
+      "updates": 536,
+      "max_abs_ev": 8.695518263768243e-15,
+      "rms_ev": 1.0734496582940329e-15,
+      "low_energy_rms_ev": 1.0685887947566257e-15,
+      "probability_l1": 5.225759317816419e-14
+    },
+    {
+      "step": 650,
+      "atoms": 6,
+      "updates": 554,
+      "max_abs_ev": 8.729101426060981e-15,
+      "rms_ev": 1.0869980516804032e-15,
+      "low_energy_rms_ev": 1.072669431706566e-15,
+      "probability_l1": 5.347201883123528e-14
+    },
+    {
+      "step": 675,
+      "atoms": 4,
+      "updates": 576,
+      "max_abs_ev": 8.729101426060981e-15,
+      "rms_ev": 1.1094282903044925e-15,
+      "low_energy_rms_ev": 1.098994013265676e-15,
+      "probability_l1": 5.4616695026869127e-14
+    },
+    {
+      "step": 700,
+      "atoms": 5,
+      "updates": 599,
+      "max_abs_ev": 8.729128531115293e-15,
+      "rms_ev": 1.1354837093011402e-15,
+      "low_energy_rms_ev": 1.1262794020838543e-15,
+      "probability_l1": 5.699129090812436e-14
+    },
+    {
+      "step": 725,
+      "atoms": 8,
+      "updates": 620,
+      "max_abs_ev": 8.729128531115293e-15,
+      "rms_ev": 1.1511826629670861e-15,
+      "low_energy_rms_ev": 1.1443556739111873e-15,
+      "probability_l1": 5.716353272860791e-14
+    },
+    {
+      "step": 750,
+      "atoms": 10,
+      "updates": 642,
+      "max_abs_ev": 8.729128531115293e-15,
+      "rms_ev": 1.1836313464056867e-15,
+      "low_energy_rms_ev": 1.1627258294151701e-15,
+      "probability_l1": 5.817602858578978e-14
+    },
+    {
+      "step": 775,
+      "atoms": 11,
+      "updates": 665,
+      "max_abs_ev": 8.729128531115293e-15,
+      "rms_ev": 1.2118681775526867e-15,
+      "low_energy_rms_ev": 1.1967033697399911e-15,
+      "probability_l1": 6.064164143948015e-14
+    },
+    {
+      "step": 800,
+      "atoms": 11,
+      "updates": 689,
+      "max_abs_ev": 8.728261169377305e-15,
+      "rms_ev": 1.2363432567065784e-15,
+      "low_energy_rms_ev": 1.2210954644481856e-15,
+      "probability_l1": 6.290480981888672e-14
+    },
+    {
+      "step": 825,
+      "atoms": 8,
+      "updates": 712,
+      "max_abs_ev": 1.0092729603450312e-14,
+      "rms_ev": 1.2527444218274451e-15,
+      "low_energy_rms_ev": 1.2569878422596173e-15,
+      "probability_l1": 6.495396748911473e-14
+    },
+    {
+      "step": 850,
+      "atoms": 9,
+      "updates": 733,
+      "max_abs_ev": 1.0092729603450312e-14,
+      "rms_ev": 1.2706153510597439e-15,
+      "low_energy_rms_ev": 1.264355289431497e-15,
+      "probability_l1": 6.55645276839787e-14
+    },
+    {
+      "step": 875,
+      "atoms": 8,
+      "updates": 756,
+      "max_abs_ev": 1.0092729603450312e-14,
+      "rms_ev": 1.2910620774286394e-15,
+      "low_energy_rms_ev": 1.2629040803380714e-15,
+      "probability_l1": 6.658083000134641e-14
+    },
+    {
+      "step": 900,
+      "atoms": 5,
+      "updates": 775,
+      "max_abs_ev": 1.0093054864102058e-14,
+      "rms_ev": 1.3071041836477545e-15,
+      "low_energy_rms_ev": 1.2883584094940416e-15,
+      "probability_l1": 6.783351634440321e-14
+    },
+    {
+      "step": 925,
+      "atoms": 6,
+      "updates": 794,
+      "max_abs_ev": 1.0093054864102058e-14,
+      "rms_ev": 1.3145126363792238e-15,
+      "low_energy_rms_ev": 1.3036945822399842e-15,
+      "probability_l1": 6.802421776566452e-14
+    },
+    {
+      "step": 950,
+      "atoms": 10,
+      "updates": 816,
+      "max_abs_ev": 9.598224992579674e-15,
+      "rms_ev": 1.328651388411548e-15,
+      "low_energy_rms_ev": 1.3088318882553334e-15,
+      "probability_l1": 6.847387293489011e-14
+    },
+    {
+      "step": 975,
+      "atoms": 11,
+      "updates": 839,
+      "max_abs_ev": 9.598224992579674e-15,
+      "rms_ev": 1.3564588943634572e-15,
+      "low_energy_rms_ev": 1.3353235610884747e-15,
+      "probability_l1": 6.972952886958087e-14
+    },
+    {
+      "step": 1000,
+      "atoms": 7,
+      "updates": 863,
+      "max_abs_ev": 9.598767093665916e-15,
+      "rms_ev": 1.3716881441289922e-15,
+      "low_energy_rms_ev": 1.359429876119105e-15,
+      "probability_l1": 7.196444022986704e-14
+    },
+    {
+      "step": 1025,
+      "atoms": 8,
+      "updates": 886,
+      "max_abs_ev": 9.598767093665916e-15,
+      "rms_ev": 1.3973992790738204e-15,
+      "low_energy_rms_ev": 1.3767366395928415e-15,
+      "probability_l1": 7.260150556795826e-14
+    },
+    {
+      "step": 1050,
+      "atoms": 8,
+      "updates": 910,
+      "max_abs_ev": 9.598658673448668e-15,
+      "rms_ev": 1.4189548777005888e-15,
+      "low_energy_rms_ev": 1.4133093139231266e-15,
+      "probability_l1": 7.410708863225265e-14
+    },
+    {
+      "step": 1075,
+      "atoms": 3,
+      "updates": 931,
+      "max_abs_ev": 9.59844183301417e-15,
+      "rms_ev": 1.4351731924350436e-15,
+      "low_energy_rms_ev": 1.438039353605328e-15,
+      "probability_l1": 7.640864359191672e-14
+    },
+    {
+      "step": 1100,
+      "atoms": 6,
+      "updates": 948,
+      "max_abs_ev": 9.59844183301417e-15,
+      "rms_ev": 1.4439351916752428e-15,
+      "low_energy_rms_ev": 1.4276575616496159e-15,
+      "probability_l1": 7.587915344983004e-14
+    },
+    {
+      "step": 1125,
+      "atoms": 12,
+      "updates": 966,
+      "max_abs_ev": 9.597574471276182e-15,
+      "rms_ev": 1.45904224362762e-15,
+      "low_energy_rms_ev": 1.4177324908569611e-15,
+      "probability_l1": 7.56744797965873e-14
+    },
+    {
+      "step": 1150,
+      "atoms": 9,
+      "updates": 987,
+      "max_abs_ev": 9.874046025259986e-15,
+      "rms_ev": 1.4794211113275881e-15,
+      "low_energy_rms_ev": 1.4544674019626735e-15,
+      "probability_l1": 7.781658228623841e-14
+    },
+    {
+      "step": 1175,
+      "atoms": 11,
+      "updates": 1011,
+      "max_abs_ev": 1.0658141036401503e-14,
+      "rms_ev": 1.5064896564806156e-15,
+      "low_energy_rms_ev": 1.4731414052590044e-15,
+      "probability_l1": 7.992588840132565e-14
+    },
+    {
+      "step": 1200,
+      "atoms": 8,
+      "updates": 1036,
+      "max_abs_ev": 9.879250195687916e-15,
+      "rms_ev": 1.5304964980765188e-15,
+      "low_energy_rms_ev": 1.5076450094026935e-15,
+      "probability_l1": 8.03730094597313e-14
+    },
+    {
+      "step": 1225,
+      "atoms": 8,
+      "updates": 1058,
+      "max_abs_ev": 9.878708094601674e-15,
+      "rms_ev": 1.5496323005199553e-15,
+      "low_energy_rms_ev": 1.5542148643235738e-15,
+      "probability_l1": 8.280059392222174e-14
+    },
+    {
+      "step": 1250,
+      "atoms": 11,
+      "updates": 1081,
+      "max_abs_ev": 9.878382833949928e-15,
+      "rms_ev": 1.5632938018320818e-15,
+      "low_energy_rms_ev": 1.5548070246693169e-15,
+      "probability_l1": 8.304729502096663e-14
+    },
+    {
+      "step": 1275,
+      "atoms": 9,
+      "updates": 1103,
+      "max_abs_ev": 9.878816514818922e-15,
+      "rms_ev": 1.583262592170248e-15,
+      "low_energy_rms_ev": 1.5707082062500144e-15,
+      "probability_l1": 8.509790863495185e-14
+    },
+    {
+      "step": 1300,
+      "atoms": 5,
+      "updates": 1125,
+      "max_abs_ev": 9.879250195687916e-15,
+      "rms_ev": 1.5963692208706905e-15,
+      "low_energy_rms_ev": 1.593653243086495e-15,
+      "probability_l1": 8.634182469299367e-14
+    },
+    {
+      "step": 1325,
+      "atoms": 10,
+      "updates": 1148,
+      "max_abs_ev": 9.87751547221194e-15,
+      "rms_ev": 1.6139550352074602e-15,
+      "low_energy_rms_ev": 1.619088613829532e-15,
+      "probability_l1": 8.651666552819676e-14
+    },
+    {
+      "step": 1350,
+      "atoms": 6,
+      "updates": 1170,
+      "max_abs_ev": 9.880984919163893e-15,
+      "rms_ev": 1.6313959111018892e-15,
+      "low_energy_rms_ev": 1.6169196789388887e-15,
+      "probability_l1": 8.83236124330915e-14
+    },
+    {
+      "step": 1375,
+      "atoms": 8,
+      "updates": 1192,
+      "max_abs_ev": 9.735864458376708e-15,
+      "rms_ev": 1.6394730602532295e-15,
+      "low_energy_rms_ev": 1.6228130252253047e-15,
+      "probability_l1": 8.808213848054324e-14
+    },
+    {
+      "step": 1400,
+      "atoms": 10,
+      "updates": 1214,
+      "max_abs_ev": 9.73613550891983e-15,
+      "rms_ev": 1.651102113875233e-15,
+      "low_energy_rms_ev": 1.6428940246150842e-15,
+      "probability_l1": 9.010927636463707e-14
+    },
+    {
+      "step": 1425,
+      "atoms": 14,
+      "updates": 1234,
+      "max_abs_ev": 9.737002870657818e-15,
+      "rms_ev": 1.6686717771746543e-15,
+      "low_energy_rms_ev": 1.6678348612520625e-15,
+      "probability_l1": 9.15144398613862e-14
+    },
+    {
+      "step": 1450,
+      "atoms": 15,
+      "updates": 1255,
+      "max_abs_ev": 1.0658141036401503e-14,
+      "rms_ev": 1.6882332342492778e-15,
+      "low_energy_rms_ev": 1.6781045648202071e-15,
+      "probability_l1": 9.162947042963424e-14
+    },
+    {
+      "step": 1475,
+      "atoms": 10,
+      "updates": 1278,
+      "max_abs_ev": 1.1324274851176597e-14,
+      "rms_ev": 1.707255767061099e-15,
+      "low_energy_rms_ev": 1.7244930488270557e-15,
+      "probability_l1": 9.395741237142941e-14
+    },
+    {
+      "step": 1500,
+      "atoms": 7,
+      "updates": 1301,
+      "max_abs_ev": 1.1317363062327002e-14,
+      "rms_ev": 1.7291025894019383e-15,
+      "low_energy_rms_ev": 1.7030548591758163e-15,
+      "probability_l1": 9.394067722385315e-14
+    },
+    {
+      "step": 1525,
+      "atoms": 5,
+      "updates": 1323,
+      "max_abs_ev": 1.1754486273218845e-14,
+      "rms_ev": 1.7457837718518218e-15,
+      "low_energy_rms_ev": 1.7263133989647013e-15,
+      "probability_l1": 9.620668866934718e-14
+    },
+    {
+      "step": 1550,
+      "atoms": 8,
+      "updates": 1342,
+      "max_abs_ev": 1.1754486273218845e-14,
+      "rms_ev": 1.7601171651596083e-15,
+      "low_energy_rms_ev": 1.7489746500458202e-15,
+      "probability_l1": 9.750621402856302e-14
+    },
+    {
+      "step": 1575,
+      "atoms": 5,
+      "updates": 1363,
+      "max_abs_ev": 1.1755136794522336e-14,
+      "rms_ev": 1.767851689483586e-15,
+      "low_energy_rms_ev": 1.7709915811926592e-15,
+      "probability_l1": 9.615592037322496e-14
+    },
+    {
+      "step": 1600,
+      "atoms": 6,
+      "updates": 1384,
+      "max_abs_ev": 1.1755136794522336e-14,
+      "rms_ev": 1.7789098266131933e-15,
+      "low_energy_rms_ev": 1.7833881812213968e-15,
+      "probability_l1": 9.737758286403915e-14
+    },
+    {
+      "step": 1625,
+      "atoms": 9,
+      "updates": 1409,
+      "max_abs_ev": 1.1657341758564144e-14,
+      "rms_ev": 1.7916379460703715e-15,
+      "low_energy_rms_ev": 1.7782501097053877e-15,
+      "probability_l1": 9.955702637765349e-14
+    },
+    {
+      "step": 1650,
+      "atoms": 12,
+      "updates": 1430,
+      "max_abs_ev": 1.1719791803699309e-14,
+      "rms_ev": 1.804293547484482e-15,
+      "low_energy_rms_ev": 1.7741423797289165e-15,
+      "probability_l1": 9.899466426331241e-14
+    },
+    {
+      "step": 1675,
+      "atoms": 8,
+      "updates": 1454,
+      "max_abs_ev": 1.1718057080223332e-14,
+      "rms_ev": 1.8198134851722703e-15,
+      "low_energy_rms_ev": 1.8056216984247868e-15,
+      "probability_l1": 9.988050804845167e-14
+    },
+    {
+      "step": 1700,
+      "atoms": 9,
+      "updates": 1477,
+      "max_abs_ev": 1.1717189718485344e-14,
+      "rms_ev": 1.834956868950133e-15,
+      "low_energy_rms_ev": 1.8418141394400605e-15,
+      "probability_l1": 1.0121577417463514e-13
+    },
+    {
+      "step": 1725,
+      "atoms": 8,
+      "updates": 1498,
+      "max_abs_ev": 1.1712852909795402e-14,
+      "rms_ev": 1.8430346572148976e-15,
+      "low_energy_rms_ev": 1.84741834131951e-15,
+      "probability_l1": 1.0204982803603866e-13
+    },
+    {
+      "step": 1750,
+      "atoms": 10,
+      "updates": 1520,
+      "max_abs_ev": 1.1712852909795402e-14,
+      "rms_ev": 1.8601235114476766e-15,
+      "low_energy_rms_ev": 1.861777249924187e-15,
+      "probability_l1": 1.0198055725809573e-13
+    },
+    {
+      "step": 1775,
+      "atoms": 10,
+      "updates": 1542,
+      "max_abs_ev": 1.1712852909795402e-14,
+      "rms_ev": 1.872720408127199e-15,
+      "low_energy_rms_ev": 1.873334081428013e-15,
+      "probability_l1": 1.0305963530476682e-13
+    },
+    {
+      "step": 1800,
+      "atoms": 8,
+      "updates": 1564,
+      "max_abs_ev": 1.1712852909795402e-14,
+      "rms_ev": 1.8841127739122772e-15,
+      "low_energy_rms_ev": 1.8706333631255907e-15,
+      "probability_l1": 1.0448853562931333e-13
+    },
+    {
+      "step": 1825,
+      "atoms": 6,
+      "updates": 1588,
+      "max_abs_ev": 1.1713015540121274e-14,
+      "rms_ev": 1.8958790192035946e-15,
+      "low_energy_rms_ev": 1.8966177585792758e-15,
+      "probability_l1": 1.0536260671527693e-13
+    },
+    {
+      "step": 1850,
+      "atoms": 11,
+      "updates": 1609,
+      "max_abs_ev": 1.171296133001265e-14,
+      "rms_ev": 1.912073585249372e-15,
+      "low_energy_rms_ev": 1.8986495546112666e-15,
+      "probability_l1": 1.0489920811884479e-13
+    },
+    {
+      "step": 1875,
+      "atoms": 10,
+      "updates": 1628,
+      "max_abs_ev": 1.1713503431098893e-14,
+      "rms_ev": 1.926237736267889e-15,
+      "low_energy_rms_ev": 1.9150146363894585e-15,
+      "probability_l1": 1.0658485916453889e-13
+    },
+    {
+      "step": 1900,
+      "atoms": 8,
+      "updates": 1650,
+      "max_abs_ev": 1.1713611851316141e-14,
+      "rms_ev": 1.9453710572952733e-15,
+      "low_energy_rms_ev": 1.9460203929293122e-15,
+      "probability_l1": 1.0830301033502355e-13
+    },
+    {
+      "step": 1925,
+      "atoms": 9,
+      "updates": 1673,
+      "max_abs_ev": 1.1712852909795402e-14,
+      "rms_ev": 1.9579312380459963e-15,
+      "low_energy_rms_ev": 1.9476371323154653e-15,
+      "probability_l1": 1.0942815416265195e-13
+    },
+    {
+      "step": 1950,
+      "atoms": 13,
+      "updates": 1695,
+      "max_abs_ev": 1.1712852909795402e-14,
+      "rms_ev": 1.9752171449315067e-15,
+      "low_energy_rms_ev": 1.950967570724534e-15,
+      "probability_l1": 1.0899974734430382e-13
+    },
+    {
+      "step": 1975,
+      "atoms": 13,
+      "updates": 1713,
+      "max_abs_ev": 1.1731934868031146e-14,
+      "rms_ev": 1.9936452779800858e-15,
+      "low_energy_rms_ev": 1.9537327239621227e-15,
+      "probability_l1": 1.105526293636476e-13
+    },
+    {
+      "step": 2000,
+      "atoms": 11,
+      "updates": 1735,
+      "max_abs_ev": 1.2434497875801753e-14,
+      "rms_ev": 2.010233189679257e-15,
+      "low_energy_rms_ev": 1.9815201656371656e-15,
+      "probability_l1": 1.1135310059215398e-13
+    },
+    {
+      "step": 2025,
+      "atoms": 6,
+      "updates": 1756,
+      "max_abs_ev": 1.219684075959293e-14,
+      "rms_ev": 2.02010316320454e-15,
+      "low_energy_rms_ev": 2.0171404361908216e-15,
+      "probability_l1": 1.1301408032095164e-13
+    },
+    {
+      "step": 2050,
+      "atoms": 14,
+      "updates": 1778,
+      "max_abs_ev": 1.2195106036116954e-14,
+      "rms_ev": 2.036300020593308e-15,
+      "low_energy_rms_ev": 2.011751851318104e-15,
+      "probability_l1": 1.1354882810242104e-13
+    },
+    {
+      "step": 2075,
+      "atoms": 8,
+      "updates": 1800,
+      "max_abs_ev": 1.2198575483068907e-14,
+      "rms_ev": 2.0542191286712978e-15,
+      "low_energy_rms_ev": 2.0301806629000543e-15,
+      "probability_l1": 1.142057530808727e-13
+    },
+    {
+      "step": 2100,
+      "atoms": 10,
+      "updates": 1822,
+      "max_abs_ev": 1.219746417584211e-14,
+      "rms_ev": 2.0641413881602385e-15,
+      "low_energy_rms_ev": 2.0494135621609023e-15,
+      "probability_l1": 1.1570962926789926e-13
+    },
+    {
+      "step": 2125,
+      "atoms": 10,
+      "updates": 1844,
+      "max_abs_ev": 1.2197708121330919e-14,
+      "rms_ev": 2.082064588913513e-15,
+      "low_energy_rms_ev": 2.0793837222019167e-15,
+      "probability_l1": 1.1687653785493704e-13
+    },
+    {
+      "step": 2150,
+      "atoms": 14,
+      "updates": 1868,
+      "max_abs_ev": 1.2198141802199913e-14,
+      "rms_ev": 2.0993509917280676e-15,
+      "low_energy_rms_ev": 2.0939935704150628e-15,
+      "probability_l1": 1.1750041383124833e-13
+    },
+    {
+      "step": 2175,
+      "atoms": 14,
+      "updates": 1888,
+      "max_abs_ev": 1.2434497875801753e-14,
+      "rms_ev": 2.114000654996267e-15,
+      "low_energy_rms_ev": 2.0841179472261083e-15,
+      "probability_l1": 1.169116834753801e-13
+    },
+    {
+      "step": 2200,
+      "atoms": 16,
+      "updates": 1912,
+      "max_abs_ev": 1.2720727249337926e-14,
+      "rms_ev": 2.134024845078915e-15,
+      "low_energy_rms_ev": 2.08718850074703e-15,
+      "probability_l1": 1.1932080293725777e-13
+    },
+    {
+      "step": 2225,
+      "atoms": 8,
+      "updates": 1932,
+      "max_abs_ev": 1.2719859887599938e-14,
+      "rms_ev": 2.147585934190952e-15,
+      "low_energy_rms_ev": 2.1447564529202124e-15,
+      "probability_l1": 1.2035951509943186e-13
+    },
+    {
+      "step": 2250,
+      "atoms": 9,
+      "updates": 1955,
+      "max_abs_ev": 1.271899252586195e-14,
+      "rms_ev": 2.164629026208532e-15,
+      "low_energy_rms_ev": 2.159630284940484e-15,
+      "probability_l1": 1.2187857742253238e-13
+    },
+    {
+      "step": 2275,
+      "atoms": 11,
+      "updates": 1975,
+      "max_abs_ev": 1.271899252586195e-14,
+      "rms_ev": 2.1795779579358707e-15,
+      "low_energy_rms_ev": 2.1602558042167377e-15,
+      "probability_l1": 1.2080138889460838e-13
+    },
+    {
+      "step": 2300,
+      "atoms": 11,
+      "updates": 1999,
+      "max_abs_ev": 1.2722461972813903e-14,
+      "rms_ev": 2.1954226733099594e-15,
+      "low_energy_rms_ev": 2.1743779521220556e-15,
+      "probability_l1": 1.225887373629278e-13
+    },
+    {
+      "step": 2325,
+      "atoms": 14,
+      "updates": 2022,
+      "max_abs_ev": 1.271899252586195e-14,
+      "rms_ev": 2.2060037444127566e-15,
+      "low_energy_rms_ev": 2.1871326871391928e-15,
+      "probability_l1": 1.2277809835455007e-13
+    },
+    {
+      "step": 2350,
+      "atoms": 11,
+      "updates": 2043,
+      "max_abs_ev": 1.2719859887599938e-14,
+      "rms_ev": 2.222649609573248e-15,
+      "low_energy_rms_ev": 2.1943748724012608e-15,
+      "probability_l1": 1.2409199055722164e-13
+    },
+    {
+      "step": 2375,
+      "atoms": 8,
+      "updates": 2064,
+      "max_abs_ev": 1.2719859887599938e-14,
+      "rms_ev": 2.235091871855806e-15,
+      "low_energy_rms_ev": 2.2309443027514687e-15,
+      "probability_l1": 1.2599436069994315e-13
+    },
+    {
+      "step": 2400,
+      "atoms": 12,
+      "updates": 2086,
+      "max_abs_ev": 1.2434497875801753e-14,
+      "rms_ev": 2.2463858994148874e-15,
+      "low_energy_rms_ev": 2.2345439818196176e-15,
+      "probability_l1": 1.2511474038350473e-13
+    },
+    {
+      "step": 2425,
+      "atoms": 7,
+      "updates": 2109,
+      "max_abs_ev": 1.3365393861097807e-14,
+      "rms_ev": 2.258014472915276e-15,
+      "low_energy_rms_ev": 2.2544765169236323e-15,
+      "probability_l1": 1.266147207483695e-13
+    },
+    {
+      "step": 2450,
+      "atoms": 8,
+      "updates": 2134,
+      "max_abs_ev": 1.336517702066331e-14,
+      "rms_ev": 2.2686922233601477e-15,
+      "low_energy_rms_ev": 2.2558270605078864e-15,
+      "probability_l1": 1.2731425603687015e-13
+    },
+    {
+      "step": 2475,
+      "atoms": 10,
+      "updates": 2158,
+      "max_abs_ev": 1.3365149915608998e-14,
+      "rms_ev": 2.2813702660682413e-15,
+      "low_energy_rms_ev": 2.2631145656305197e-15,
+      "probability_l1": 1.293903559193262e-13
+    },
+    {
+      "step": 2500,
+      "atoms": 11,
+      "updates": 2181,
+      "max_abs_ev": 1.336517702066331e-14,
+      "rms_ev": 2.2927940138937464e-15,
+      "low_energy_rms_ev": 2.2913498138360374e-15,
+      "probability_l1": 1.2984740526266484e-13
+    },
+    {
+      "step": 2525,
+      "atoms": 7,
+      "updates": 2203,
+      "max_abs_ev": 1.336517702066331e-14,
+      "rms_ev": 2.3041589455039095e-15,
+      "low_energy_rms_ev": 2.2996470039817773e-15,
+      "probability_l1": 1.30677359802241e-13
+    },
+    {
+      "step": 2550,
+      "atoms": 14,
+      "updates": 2226,
+      "max_abs_ev": 1.3364851760011565e-14,
+      "rms_ev": 2.323494561625733e-15,
+      "low_energy_rms_ev": 2.3192900382259834e-15,
+      "probability_l1": 1.3086122058542028e-13
+    },
+    {
+      "step": 2575,
+      "atoms": 6,
+      "updates": 2248,
+      "max_abs_ev": 1.3364743339794316e-14,
+      "rms_ev": 2.333428703619248e-15,
+      "low_energy_rms_ev": 2.319974628239229e-15,
+      "probability_l1": 1.3150689357820062e-13
+    },
+    {
+      "step": 2600,
+      "atoms": 9,
+      "updates": 2265,
+      "max_abs_ev": 1.3766765505351941e-14,
+      "rms_ev": 2.3408401887889095e-15,
+      "low_energy_rms_ev": 2.3270575572922847e-15,
+      "probability_l1": 1.3219914491275047e-13
+    },
+    {
+      "step": 2625,
+      "atoms": 11,
+      "updates": 2285,
+      "max_abs_ev": 1.3766765505351941e-14,
+      "rms_ev": 2.354328798622526e-15,
+      "low_energy_rms_ev": 2.344680626357147e-15,
+      "probability_l1": 1.3284652997087545e-13
+    },
+    {
+      "step": 2650,
+      "atoms": 13,
+      "updates": 2309,
+      "max_abs_ev": 1.366962099069724e-14,
+      "rms_ev": 2.3706470739045208e-15,
+      "low_energy_rms_ev": 2.377580611121299e-15,
+      "probability_l1": 1.35000532849919e-13
+    },
+    {
+      "step": 2675,
+      "atoms": 10,
+      "updates": 2334,
+      "max_abs_ev": 1.354472090042691e-14,
+      "rms_ev": 2.3888799434810577e-15,
+      "low_energy_rms_ev": 2.3848272558560504e-15,
+      "probability_l1": 1.3477379568246618e-13
+    },
+    {
+      "step": 2700,
+      "atoms": 9,
+      "updates": 2355,
+      "max_abs_ev": 1.354472090042691e-14,
+      "rms_ev": 2.3981733002732814e-15,
+      "low_energy_rms_ev": 2.3938151425529286e-15,
+      "probability_l1": 1.3602858997289135e-13
+    },
+    {
+      "step": 2725,
+      "atoms": 6,
+      "updates": 2378,
+      "max_abs_ev": 1.3544829320644158e-14,
+      "rms_ev": 2.4078760643793206e-15,
+      "low_energy_rms_ev": 2.3992818434717014e-15,
+      "probability_l1": 1.368765532799591e-13
+    },
+    {
+      "step": 2750,
+      "atoms": 11,
+      "updates": 2399,
+      "max_abs_ev": 1.4210854715202004e-14,
+      "rms_ev": 2.4180319369249535e-15,
+      "low_energy_rms_ev": 2.4010239338645927e-15,
+      "probability_l1": 1.3646412552640268e-13
+    },
+    {
+      "step": 2775,
+      "atoms": 8,
+      "updates": 2420,
+      "max_abs_ev": 1.4039984452818288e-14,
+      "rms_ev": 2.429456787797403e-15,
+      "low_energy_rms_ev": 2.4201057405884127e-15,
+      "probability_l1": 1.3834489759951863e-13
+    },
+    {
+      "step": 2800,
+      "atoms": 8,
+      "updates": 2444,
+      "max_abs_ev": 1.4040201293252785e-14,
+      "rms_ev": 2.4397829484176853e-15,
+      "low_energy_rms_ev": 2.4359301142212185e-15,
+      "probability_l1": 1.4010166595498067e-13
+    },
+    {
+      "step": 2825,
+      "atoms": 9,
+      "updates": 2467,
+      "max_abs_ev": 1.4039984452818288e-14,
+      "rms_ev": 2.4511202440578747e-15,
+      "low_energy_rms_ev": 2.4556204157132693e-15,
+      "probability_l1": 1.400876422657477e-13
+    },
+    {
+      "step": 2850,
+      "atoms": 11,
+      "updates": 2491,
+      "max_abs_ev": 1.4039984452818288e-14,
+      "rms_ev": 2.465628632543352e-15,
+      "low_energy_rms_ev": 2.4665870821239617e-15,
+      "probability_l1": 1.4013430986361403e-13
+    },
+    {
+      "step": 2875,
+      "atoms": 7,
+      "updates": 2513,
+      "max_abs_ev": 1.4039984452818288e-14,
+      "rms_ev": 2.4786996475451918e-15,
+      "low_energy_rms_ev": 2.481274007480586e-15,
+      "probability_l1": 1.4036267598130353e-13
+    },
+    {
+      "step": 2900,
+      "atoms": 9,
+      "updates": 2533,
+      "max_abs_ev": 1.40391170910803e-14,
+      "rms_ev": 2.484271737526941e-15,
+      "low_energy_rms_ev": 2.4850130600953614e-15,
+      "probability_l1": 1.4053290609853736e-13
+    },
+    {
+      "step": 2925,
+      "atoms": 8,
+      "updates": 2556,
+      "max_abs_ev": 1.4039984452818288e-14,
+      "rms_ev": 2.4972823088133246e-15,
+      "low_energy_rms_ev": 2.4917954181422594e-15,
+      "probability_l1": 1.4203621593815956e-13
+    },
+    {
+      "step": 2950,
+      "atoms": 13,
+      "updates": 2579,
+      "max_abs_ev": 1.40391170910803e-14,
+      "rms_ev": 2.5053937507905136e-15,
+      "low_energy_rms_ev": 2.51560790473922e-15,
+      "probability_l1": 1.4343818802652167e-13
+    },
+    {
+      "step": 2975,
+      "atoms": 10,
+      "updates": 2602,
+      "max_abs_ev": 1.4037382367604323e-14,
+      "rms_ev": 2.5167171311762016e-15,
+      "low_energy_rms_ev": 2.5030241332126083e-15,
+      "probability_l1": 1.4294291854489966e-13
+    },
+    {
+      "step": 3000,
+      "atoms": 9,
+      "updates": 2627,
+      "max_abs_ev": 1.4038249729342311e-14,
+      "rms_ev": 2.5286086608047952e-15,
+      "low_energy_rms_ev": 2.5046956947704346e-15,
+      "probability_l1": 1.4285624939258277e-13
+    }
+  ],
+  "cutoff_comparison": [
+    {
+      "cutoff_angstrom": 4.0,
+      "max_abs_ev": 0.023703494479147425,
+      "rms_ev": 0.006840350771404051,
+      "low_energy_rms_ev": 0.006109818129674805,
+      "energy_at_cutoff_ev": 0.0
+    },
+    {
+      "cutoff_angstrom": 6.0,
+      "max_abs_ev": 0.005283655361758122,
+      "rms_ev": 0.0020146909910813424,
+      "low_energy_rms_ev": 0.0019331599071660411,
+      "energy_at_cutoff_ev": 0.0
+    },
+    {
+      "cutoff_angstrom": 8.0,
+      "max_abs_ev": 0.0011047958031402943,
+      "rms_ev": 0.0005088990003763483,
+      "low_energy_rms_ev": 0.000504027647029705,
+      "energy_at_cutoff_ev": 0.0
+    },
+    {
+      "cutoff_angstrom": 10.0,
+      "max_abs_ev": 0.0,
+      "rms_ev": 0.0,
+      "low_energy_rms_ev": 0.0,
+      "energy_at_cutoff_ev": 0.0
+    }
+  ]
+}

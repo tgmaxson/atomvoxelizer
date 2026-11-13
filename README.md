@@ -252,7 +252,7 @@ https://github.com/tgmaxson/atomvoxelizer
 Please submit merge requests through the GitLab repository. GitHub issues
 will also be monitored, but active development happens on GitLab.
 
-## Single-atom insertion energies (1.2.0)
+## Single-atom insertion energies (1.3.0)
 
 Build UFF Lennard-Jones energy grids for single-atom probes and generate
 normalized energy-biased insertion proposals:
@@ -281,3 +281,8 @@ insertion-estimator variance by 14x at 298 K and 22x at 77 K. Reusing the grid
 can save energy evaluations; setup costs and gains with other potentials need
 separate assessment. See the [insertion guide](https://atomvoxelizer.readthedocs.io/en/latest/insertion.html)
 for parameters, measured results, and sampling corrections.
+
+An [iterative Ar MC example](https://atomvoxelizer.readthedocs.io/en/latest/argon_mc.html)
+starts from an empty box, updates pair fields after accepted moves, and plots
+drift against full regeneration. It uses a 10 eV pair cap and an energy-shifted
+cutoff, with a separate comparison of 4–10 Angstrom cutoffs.

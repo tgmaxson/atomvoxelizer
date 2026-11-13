@@ -83,6 +83,39 @@ def uff_parameters(element):
     return LJParameters(distance / 2 ** (1 / 6), depth * KCAL_MOL_TO_EV)
 
 
+def lj_pair_energy(distances, parameters, cutoff, *, shift=False, energy_cap=None):
+    """Evaluate LJ pair energies in eV, exactly zero at and beyond cutoff.
+
+    With ``shift=True``, subtract U(cutoff) inside the cutoff so the energy
+    approaches zero continuously. Forces are not shifted. ``energy_cap`` sets
+    a positive upper bound per pair, including at r=0. It changes only the
+    repulsive core; attractive values are not rescaled. Defaults retain the
+    unshifted, singular potential used by earlier releases.
+    """
+    if not np.isfinite(cutoff) or cutoff <= 0:
+        raise ValueError("cutoff must be finite and positive")
+    if energy_cap is not None and (not np.isfinite(energy_cap) or energy_cap <= 0):
+        raise ValueError("energy_cap must be finite and positive in eV")
+    distance = np.asarray(distances, dtype=np.float64)
+    if np.any(np.isnan(distance)) or np.any(distance < 0):
+        raise ValueError("distances must be non-negative and not NaN")
+    result = np.zeros_like(distance)
+    if parameters.epsilon == 0:
+        return result
+    inside = distance < cutoff
+    nonzero = inside & (distance > 0)
+    with np.errstate(over="ignore", divide="ignore"):
+        ratio6 = (parameters.sigma / distance[nonzero]) ** 6
+        result[nonzero] = 4 * parameters.epsilon * ratio6 * (ratio6 - 1)
+    result[inside & (distance == 0)] = np.inf
+    if shift:
+        ratio6_cutoff = (parameters.sigma / cutoff) ** 6
+        result[inside] -= 4 * parameters.epsilon * ratio6_cutoff * (ratio6_cutoff - 1)
+    if energy_cap is not None:
+        np.minimum(result, energy_cap, out=result)
+    return result
+
+
 def lj_insertion_grid(
     cell,
     positions,
@@ -95,6 +128,8 @@ def lj_insertion_grid(
     parameters=None,
     mixing="geometric",
     chunk_size=65536,
+    shift=False,
+    energy_cap=None,
 ):
     """Return a float64 VoxelGrid of single-atom insertion energies in eV.
 
@@ -102,9 +137,11 @@ def lj_insertion_grid(
     atoms. Any nonsingular cell with row lattice vectors is supported and is
     periodic in all directions. All periodic images strictly inside ``cutoff``
     contribute, including multiple images when the sphere spans the cell.
-    The potential is truncated, unshifted, without tail corrections. The default
+    The default potential is truncated and unshifted, without tail corrections. The default
     cutoff is half the shortest perpendicular cell height. Positive infinity
-    marks an exact atom overlap.
+    marks an exact atom overlap unless ``energy_cap`` is set. ``shift=True``
+    subtracts the cutoff energy inside each sphere; ``energy_cap`` caps each
+    pair contribution before accumulation, not the total grid energy.
 
     ``parameters=None`` selects the bundled UFF subset. A custom mapping must
     contain LJParameters for every framework label and the probe. Geometric
@@ -112,6 +149,8 @@ def lj_insertion_grid(
     arithmetic sigma mean instead. Work arrays scale with ``chunk_size``;
     only the fractional bounding box of each atom's cutoff sphere is visited.
     """
+    # Validate potential options even for an empty box.
+    lj_pair_energy([], LJParameters(1.0, 0.0), 1.0, shift=shift, energy_cap=energy_cap)
     cell = np.asarray(cell, dtype=float)
     if cell.shape != (3, 3) or not np.all(np.isfinite(cell)):
         raise ValueError("cell must be a finite (3, 3) matrix")
@@ -186,11 +225,9 @@ def lj_insertion_grid(
             distance2 = np.sum(delta**2, axis=1)
             active = distance2 < cutoff**2
             indices, distance2 = indices[active], distance2[active]
-            nonzero = distance2 > 0
-            values = np.full(len(distance2), np.inf)
-            with np.errstate(over="ignore", invalid="ignore"):
-                ratio6 = (pair.sigma**2 / distance2[nonzero]) ** 3
-                values[nonzero] = 4 * pair.epsilon * ratio6 * (ratio6 - 1)
+            values = lj_pair_energy(
+                np.sqrt(distance2), pair, cutoff, shift=shift, energy_cap=energy_cap
+            )
             wrapped = np.ravel_multi_index(tuple((indices % grid.gpts).T), grid.gpts)
             # add.at also accumulates distinct periodic images of the same atom
             # when a cutoff sphere wraps onto the same voxel more than once.

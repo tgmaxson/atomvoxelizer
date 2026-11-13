@@ -7,6 +7,14 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-13
+
+### Added
+- Optional pairwise energy caps and cutoff energy shifts, with a shared public
+  LJ pair evaluator for continuous and grid energies.
+- An empty-box Ar GCMC example with incremental grid updates, drift audits
+  against full regeneration, and fixed-configuration cutoff comparisons.
+
 ## [1.2.0] - 2026-11-13
 
 ### Added
