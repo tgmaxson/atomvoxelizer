@@ -251,3 +251,33 @@ https://github.com/tgmaxson/atomvoxelizer
 
 Please submit merge requests through the GitLab repository. GitHub issues
 will also be monitored, but active development happens on GitLab.
+
+## Single-atom insertion energies (1.1.0)
+
+Build UFF Lennard-Jones energy grids for single-atom probes and generate
+normalized energy-biased insertion proposals:
+
+```python
+import numpy as np
+from atomvoxelizer import lj_insertion_grid, insertion_probabilities
+
+energy = lj_insertion_grid(
+    np.eye(3) * 20, [[10.1, 10.2, 10.3]], ["Si"],
+    probe="Ar", resolution=0.5, cutoff=8.0,
+)
+probability = insertion_probabilities(energy.grid, temperature=298.15)
+```
+
+Run the offline carbon-cage example, including an energy/probability plot:
+
+```bash
+python examples/insertion/uff_argon.py --plot argon_insertion.png
+```
+
+The NPZ output includes continuous insertion proposals and their probability
+densities for use in Monte Carlo acceptance corrections. The implementation
+uses actual voxel-center distances, energies in eV, distances in Angstrom,
+geometric UFF mixing, and a truncated minimum-image potential in fully periodic
+orthogonal cells. A 5% uniform proposal component retains support over finite
+voxels. See the [insertion guide](https://atomvoxelizer.readthedocs.io/en/latest/insertion.html)
+for custom parameters, supported elements, cutoff limits, and acceptance rules.

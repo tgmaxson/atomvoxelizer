@@ -16,6 +16,14 @@ For development from source:
    cd atomvoxelizer
    pip install -e ".[dev,examples]"
 
+Single-Atom LJ Insertion
+-------------------------
+
+Build an Ar insertion-energy grid, sample energy-biased positions, and export
+proposal densities with ``examples/insertion/uff_argon.py``. The default
+carbon-cage example works offline. See :doc:`insertion` for the API, units,
+UFF mixing rules, and Monte Carlo acceptance considerations.
+
 Zeolite Voxelization
 --------------------
 

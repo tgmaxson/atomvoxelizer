@@ -1,10 +1,27 @@
 """AtomVoxelizer public API."""
 
 from .voxelgrid import VoxelGrid, VoxelGridNumPy
-from .vectorgrid import FieldVoxelGrid, FieldVoxelGridNumPy, VectorVoxelGrid, VectorVoxelGridNumPy
+from .vectorgrid import (
+    FieldVoxelGrid,
+    FieldVoxelGridNumPy,
+    VectorVoxelGrid,
+    VectorVoxelGridNumPy,
+)
+from .insertion import (
+    LJParameters,
+    UFF_ELEMENTS,
+    uff_parameters,
+    lj_insertion_grid,
+    insertion_probabilities,
+)
 from .analysis import ProbeAccessibleResult, VoxelGridAnalysis, VoxelRegion
 
 __all__ = [
+    "LJParameters",
+    "UFF_ELEMENTS",
+    "uff_parameters",
+    "lj_insertion_grid",
+    "insertion_probabilities",
     "VoxelGrid",
     "VoxelGridAnalysis",
     "VoxelGridCpp",
@@ -33,7 +50,9 @@ def __getattr__(name):
         "VectorVoxelGridTaichi",
         "VectorVoxelGridTaichiGPU",
     }:
-        raise NotImplementedError(f"{name} is not implemented on the field-grid development branch")
+        raise NotImplementedError(
+            f"{name} is not implemented on the field-grid development branch"
+        )
     if name == "VoxelGridCuPy":
         from .cupy_backend import VoxelGridCuPy
 

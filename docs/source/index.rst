@@ -18,6 +18,7 @@ volume.
    concepts
    analysis
    examples
+   insertion
    contributing
    citation
    api

@@ -7,6 +7,17 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-13
+
+### Added
+- UFF van der Waals parameters for 31 elements, converted to sigma in Angstrom
+  and epsilon in eV, with geometric UFF or Lorentz-Berthelot mixing.
+- Chunked single-atom LJ insertion-energy grids for orthogonal periodic cells,
+  evaluating actual atom-to-voxel-center distances with a minimum-image cutoff.
+- Stable normalized insertion probabilities with a uniform proposal component.
+- An offline Ar/carbon-cage example with optional ASE structure input, slice
+  plots, NPZ export, and continuous proposals with their probability densities.
+
 ## [1.0.0] - 2026-08-10
 
 ### Added

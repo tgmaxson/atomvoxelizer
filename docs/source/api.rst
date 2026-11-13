@@ -82,3 +82,9 @@ Analysis
    :members:
    :undoc-members:
    :show-inheritance:
+
+Insertion Energies
+------------------
+
+.. automodule:: atomvoxelizer.insertion
+   :members: LJParameters, UFF_ELEMENTS, uff_parameters, lj_insertion_grid, insertion_probabilities
