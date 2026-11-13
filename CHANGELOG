@@ -7,6 +7,16 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-13
+
+### Documentation
+- Grouped the LJ insertion-bias and iterative Ar MC guides under advanced
+  sampling examples, after the existing feature examples and benchmarks.
+- Labelled each drift-axis tick with its exponent and added the maximum error
+  to the plot title.
+- Documented the reservoir activity, chemical potential, fugacity, and explicit
+  insertion/deletion acceptance rules; added interacting detailed-balance tests.
+
 ## [1.3.0] - 2026-11-13
 
 ### Added

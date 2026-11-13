@@ -1,9 +1,10 @@
 Iterative Ar Monte Carlo
 ========================
 
-Pairwise fields can be added and removed without rebuilding the entire grid.
-In this example, **2627 accepted updates over 3000 MC attempts agreed with full
-regeneration to within 1.5e-14 eV**. The incremental grid was never reset.
+This example starts with an empty periodic box and updates the insertion grid
+as Ar atoms enter and leave. **2627 accepted updates over 3000 MC attempts
+agreed with full regeneration to within 1.5e-14 eV**. The incremental grid was
+never reset.
 Cutoff choice had a much larger effect: the low-energy RMS difference between
 8 and 10 Angstrom cutoffs was 0.50 meV for the final snapshot.
 
@@ -26,6 +27,10 @@ Run from the repository root:
      - Equally likely insertion or deletion; uniform choice of atom for deletion
    * - Temperature / activity
      - 150 K / 0.001 Angstrom^-3
+   * - Reservoir fugacity / ideal-gas pressure
+     - 20.71 bar
+   * - Chemical potential (classical Ar reference)
+     - -0.14704 eV per atom; Ar mass 39.948 u
    * - Pair model
      - UFF Ar; energy-shifted LJ; 10 eV cap per pair; no tail correction
    * - MC cutoff / grid spacing
@@ -143,21 +148,50 @@ infinite-cutoff result. Each pair curve is exactly zero at its own cutoff.
 MC Acceptance
 -------------
 
-The simulation starts empty and exchanges Ar atoms with a reservoir. Activity
-is z = exp(beta*mu)/Lambda^3 in Angstrom^-3. For N atoms, an insertion at r with
-proposal density q_X(r) is accepted with probability
+The input is activity, z = exp(beta*mu)/Lambda^3, with the monatomic thermal
+wavelength Lambda = h / sqrt(2*pi*m*k_B*T). At 150 K and Ar mass 39.948 u,
+Lambda = 0.22553 Angstrom and mu = k_B*T*ln(z*Lambda^3) = -0.14704 eV.
+The energy reference is an isolated Ar atom with zero potential energy.
+
+The reservoir fugacity is f = z*k_B*T = 20.71 bar. This equals pressure for an
+ideal reservoir. For a nonideal reservoir f = phi*P; converting to pressure
+requires a fugacity coefficient or an equation of state. It is not a measured
+pressure of the simulated box. These definitions follow the
+`standard GCMC convention <https://docs.lammps.org/fix_gcmc.html>`_, using the
+`Ar mass tabulated by NIST <https://webbook.nist.gov/cgi/cbook.cgi?Name=Argon>`_.
+
+Let N be the atom count **before the attempted move**, and q_N(r) the insertion
+proposal density in the current configuration. With equal insertion/deletion
+attempt probabilities and uniform selection of an atom for deletion:
 
 .. math::
 
-   A_{ins} = \min\left(1,\frac{z\,e^{-\beta\Delta U}}{(N+1)q_X(r)}\right).
+   A_{\mathrm{ins}} = \min\left(1,
+       \frac{z}{(N+1)q_N(\mathbf r)}
+       e^{-\beta\Delta U_{\mathrm{ins}}}\right),
+   \qquad \Delta U_{\mathrm{ins}} = U_{N+1}-U_N,
 
-Deletion uses the reciprocal ratio for the reverse insertion, evaluated in the
-state **without the deleted atom**. The insertion bias therefore changes as
-atoms enter or leave, while detailed balance uses the appropriate state in each
-direction. Empty-box deletion attempts are rejected; move selection remains
-50/50. Pair energies are evaluated at actual positions, without grid
-interpolation. The example restricts the cutoff to at most half the cubic box
-length so each pair has one contributing image.
+.. math::
+
+   A_{\mathrm{del}} = \min\left(1,
+       \frac{N q_{N-1}(\mathbf r)}{z}
+       e^{-\beta\Delta U_{\mathrm{del}}}\right),
+   \qquad \Delta U_{\mathrm{del}} = U_{N-1}-U_N.
+
+For deletion, q_{N-1} is evaluated in the configuration **without the deleted
+atom**. The prefactor is N, because the reverse insertion into N-1 atoms has
+denominator (N-1)+1 = N. For uniform proposals, q = 1/V, recovering the usual
+insertion factor z*V/(N+1) and deletion factor N/(z*V).
+
+In the code, ``removed_energy`` is U_N-U_{N-1}, so its deletion exponent is
+``+beta*removed_energy``. Tests check the actual kernel's acceptance thresholds
+in both directions for an interacting pair of configurations, the reverse
+density after removing an atom, and the ideal-gas limit.
+
+Empty-box deletions are rejected; move selection remains 50/50. Energies use
+actual positions and the same capped, shifted potential in both directions.
+The MC example restricts the cutoff to half the cubic box length or less, so
+each pair has one contributing image.
 
 The NPZ file stores final positions and both grids. The
 :download:`full report <_static/argon_gcmc.json>` records every audit, accepted

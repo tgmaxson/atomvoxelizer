@@ -197,6 +197,7 @@ def cutoff_comparison(mc, cutoffs):
 
 def plot_results(mc, history, comparison, output):
     import matplotlib.pyplot as plt
+    from matplotlib.ticker import FuncFormatter
 
     fig, axes = plt.subplots(2, 2, figsize=(10, 7), constrained_layout=True)
     steps = [row["step"] for row in history]
@@ -209,6 +210,12 @@ def plot_results(mc, history, comparison, output):
     ]:
         axes[0, 1].plot(steps, [row[key] for row in history], label=label)
     axes[0, 1].set(xlabel="MC attempts", ylabel="Incremental − rebuilt grid error (eV)")
+    # Put the exponent on every tick; an offset such as 1e-14 is easy to miss.
+    axes[0, 1].yaxis.set_major_formatter(
+        FuncFormatter(lambda value, _: f"{value:.1e}" if value else "0")
+    )
+    maximum_error = max(row["max_abs_ev"] for row in history)
+    axes[0, 1].set_title(f"Maximum audited error: {maximum_error:.2e} eV", fontsize=10)
     axes[0, 1].legend(fontsize=8)
     distances = np.linspace(
         3.0, max(row["cutoff_angstrom"] for row in comparison) + 0.5, 1000

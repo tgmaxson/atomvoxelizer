@@ -18,8 +18,6 @@ volume.
    concepts
    analysis
    examples
-   insertion
-   argon_mc
    contributing
    citation
    api

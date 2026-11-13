@@ -1,8 +1,8 @@
 Single-Atom Insertion Bias
 ==========================
 
-An LJ insertion grid concentrates proposals near favorable sites in a fixed
-host. In the carbon-cage example below, a 0.25 Angstrom grid reduced the
+This example uses an LJ insertion grid to sample favorable positions in a
+fixed host. In the carbon-cage example below, a 0.25 Angstrom grid reduced the
 variance of a Widom insertion estimate by **14x at 298 K and 22x at 77 K**
 compared with uniform sampling.
 

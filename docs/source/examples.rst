@@ -16,21 +16,6 @@ For development from source:
    cd atomvoxelizer
    pip install -e ".[dev,examples]"
 
-Single-Atom LJ Insertion
-------------------------
-
-``examples/insertion/uff_argon.py`` builds an Ar insertion grid in a carbon cage
-and exports sampled positions with their proposal densities. See :doc:`insertion`
-for settings, usage, and a sampling comparison: the finest grid reduced
-insertion-estimator variance by 14x at 298 K and 22x at 77 K in this fixed host.
-
-Iterative Ar Monte Carlo
-------------------------
-
-``examples/insertion/argon_gcmc.py`` starts with an empty box and adds or
-subtracts pair fields after accepted MC moves. See :doc:`argon_mc` for grid
-drift over 3000 attempts, a finite-core potential, and cutoff comparisons.
-
 Zeolite Voxelization
 --------------------
 
@@ -223,3 +208,17 @@ Run the dtype benchmark to compare grid storage types:
 .. image:: _static/cupy_cell_coloring_scaling.png
    :alt: Experimental CuPy cell-coloring benchmark compared with CPU Numba
    :width: 85%
+
+Advanced Sampling Examples
+--------------------------
+
+These examples use LJ energy fields to bias insertion proposals. Start with the
+fixed-host example, then use the Ar Monte Carlo example to update the field as
+atoms enter and leave the box. Both assume familiarity with periodic grids and
+Monte Carlo sampling.
+
+.. toctree::
+   :maxdepth: 1
+
+   insertion
+   argon_mc
