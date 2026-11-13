@@ -7,6 +7,13 @@ https://keepachangelog.com/en/1.1.0/
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-11-13
+
+### Documentation
+- Expanded sidebar navigation depth so advanced example pages and their
+  sections remain visible under Examples, with the current page highlighted.
+- Included custom sidebar templates in source distributions.
+
 ## [1.3.1] - 2026-11-13
 
 ### Documentation

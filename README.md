@@ -252,7 +252,7 @@ https://github.com/tgmaxson/atomvoxelizer
 Please submit merge requests through the GitLab repository. GitHub issues
 will also be monitored, but active development happens on GitLab.
 
-## Single-atom insertion energies (1.3.1)
+## Single-atom insertion energies (1.3.2)
 
 Build UFF Lennard-Jones energy grids for single-atom probes and generate
 normalized energy-biased insertion proposals:

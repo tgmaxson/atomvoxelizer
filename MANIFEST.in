@@ -3,7 +3,7 @@ include README.md
 include pyproject.toml
 include setup.py
 recursive-include benchmarks *.py
-recursive-include docs/source *.py *.rst *.css *.png *.json
+recursive-include docs/source *.py *.rst *.css *.png *.json *.html
 recursive-include examples *.py *.cif
 recursive-include src/atomvoxelizer *.cpp
 recursive-include tests *.py
